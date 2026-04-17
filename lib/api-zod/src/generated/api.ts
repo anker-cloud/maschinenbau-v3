@@ -64,6 +64,19 @@ export const LoginResponse = zod.object({
 });
 
 /**
+ * @summary Check whether an email address is available (authenticated; excludes current user's own email)
+ */
+export const CheckEmailAvailabilityQueryParams = zod.object({
+  email: zod.coerce.string().email(),
+});
+
+export const CheckEmailAvailabilityResponse = zod.object({
+  available: zod
+    .boolean()
+    .describe("true if the email is not in use by another account"),
+});
+
+/**
  * @summary Get the current authenticated user
  */
 export const GetCurrentUserResponse = zod.object({

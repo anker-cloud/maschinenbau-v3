@@ -13,6 +13,11 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface EmailAvailabilityResponse {
+  /** true if the email is not in use by another account */
+  available: boolean;
+}
+
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const UserRole = {
@@ -182,6 +187,10 @@ export interface SendMessageResponse {
   userMessage: Message;
   assistantMessage: Message;
 }
+
+export type CheckEmailAvailabilityParams = {
+  email: string;
+};
 
 export type UploadDocumentBody = {
   title: string;

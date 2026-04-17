@@ -19,11 +19,13 @@ import type {
 import type {
   AuthResponse,
   ChangePasswordBody,
+  CheckEmailAvailabilityParams,
   Conversation,
   ConversationDetail,
   CreateConversationBody,
   CreateUserBody,
   Document,
+  EmailAvailabilityResponse,
   ErrorResponse,
   GetDocumentViewUrlParams,
   HealthStatus,
@@ -462,6 +464,109 @@ export const useLogout = <
 > => {
   return useMutation(getLogoutMutationOptions(options));
 };
+
+/**
+ * @summary Check whether an email address is available (authenticated; excludes current user's own email)
+ */
+export const getCheckEmailAvailabilityUrl = (
+  params: CheckEmailAvailabilityParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/auth/check-email?${stringifiedParams}`
+    : `/api/auth/check-email`;
+};
+
+export const checkEmailAvailability = async (
+  params: CheckEmailAvailabilityParams,
+  options?: RequestInit,
+): Promise<EmailAvailabilityResponse> => {
+  return customFetch<EmailAvailabilityResponse>(
+    getCheckEmailAvailabilityUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCheckEmailAvailabilityQueryKey = (
+  params?: CheckEmailAvailabilityParams,
+) => {
+  return [`/api/auth/check-email`, ...(params ? [params] : [])] as const;
+};
+
+export const getCheckEmailAvailabilityQueryOptions = <
+  TData = Awaited<ReturnType<typeof checkEmailAvailability>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: CheckEmailAvailabilityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof checkEmailAvailability>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCheckEmailAvailabilityQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof checkEmailAvailability>>
+  > = ({ signal }) =>
+    checkEmailAvailability(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof checkEmailAvailability>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CheckEmailAvailabilityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof checkEmailAvailability>>
+>;
+export type CheckEmailAvailabilityQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Check whether an email address is available (authenticated; excludes current user's own email)
+ */
+
+export function useCheckEmailAvailability<
+  TData = Awaited<ReturnType<typeof checkEmailAvailability>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: CheckEmailAvailabilityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof checkEmailAvailability>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCheckEmailAvailabilityQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get the current authenticated user
