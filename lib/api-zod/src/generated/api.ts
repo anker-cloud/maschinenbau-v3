@@ -16,6 +16,34 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Self-service signup (creates a 'user' role account)
+ */
+export const RegisterBody = zod.object({
+  email: zod.string(),
+  name: zod.string(),
+  password: zod.string(),
+});
+
+/**
+ * @summary Exchange a refresh token for a new access token
+ */
+export const RefreshSessionBody = zod.object({
+  refreshToken: zod.string().optional(),
+});
+
+export const RefreshSessionResponse = zod.object({
+  token: zod.string(),
+  refreshToken: zod.string(),
+  user: zod.object({
+    id: zod.string().uuid(),
+    email: zod.string(),
+    name: zod.string(),
+    role: zod.enum(["admin", "user"]),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
  * @summary Login with email and password
  */
 export const LoginBody = zod.object({
@@ -25,6 +53,7 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   token: zod.string(),
+  refreshToken: zod.string(),
   user: zod.object({
     id: zod.string().uuid(),
     email: zod.string(),
@@ -108,6 +137,14 @@ export const ListDocumentsResponseItem = zod.object({
   createdAt: zod.coerce.date(),
 });
 export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem);
+
+/**
+ * @summary Upload a document file directly (admin only, up to 100MB)
+ */
+export const UploadDocumentBody = zod.object({
+  title: zod.string(),
+  file: zod.instanceof(File),
+});
 
 /**
  * @summary Register a document after upload (admin only)

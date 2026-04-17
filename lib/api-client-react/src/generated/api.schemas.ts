@@ -35,7 +35,18 @@ export interface LoginBody {
 
 export interface AuthResponse {
   token: string;
+  refreshToken: string;
   user: User;
+}
+
+export interface RegisterBody {
+  email: string;
+  name: string;
+  password: string;
+}
+
+export interface RefreshBody {
+  refreshToken?: string;
 }
 
 export type CreateUserBodyRole =
@@ -148,6 +159,11 @@ export interface SendMessageResponse {
   userMessage: Message;
   assistantMessage: Message;
 }
+
+export type UploadDocumentBody = {
+  title: string;
+  file: Blob;
+};
 
 export type GetDocumentViewUrlParams = {
   page?: number;
