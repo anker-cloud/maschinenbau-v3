@@ -25,3 +25,26 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Project: Sturtz Maschinenbau Support Chatbot
+
+Internal support chatbot that answers technical questions from machinery/part manuals using RAG.
+
+### Architecture
+- **API server** (`artifacts/api-server`): Express 5, Node, Drizzle ORM, custom JWT auth (httpOnly cookie). Proxies chat requests to a separate Python RAG microservice.
+- **RAG service** (Task #2, not yet built): Python (PageIndex + AWS Bedrock Claude) at `RAG_SERVICE_URL` (default `http://127.0.0.1:8001`).
+- **Frontend** (Task #3, not yet built): React + Vite chat UI.
+
+### Auth
+- Custom username/password auth, JWT in httpOnly cookie (`sturtz_token`).
+- Roles: `admin`, `user`. Admin-only endpoints under `/api/admin/*`.
+- Seed admin: `admin@sturtz.com` / `changeme123` (override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
+- `JWT_SECRET` should be set as a secret in production.
+
+### Storage
+- Uploaded documents go directly to GCS via presigned URL (`POST /api/storage/uploads/request-url`).
+- Admin then registers the document via `POST /api/admin/documents`, which queues ingestion with the RAG service.
+- Document view URL: `GET /api/documents/{id}/view?page=N` redirects to the underlying file with a `#page=N` anchor.
+
+### DB schema
+`users`, `documents`, `document_chunks`, `conversations`, `messages` (citations stored as jsonb).
