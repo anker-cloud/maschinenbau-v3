@@ -1,0 +1,138 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Arial",
+      "role": "body"
+    },
+    {
+      "family": "Open Sans",
+      "role": "body"
+    },
+    {
+      "family": "Roboto",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#4DB4DE",
+    "secondary": "#2563EB",
+    "accent": "#2563EB",
+    "background": "#FFFFFF",
+    "textPrimary": "#283745",
+    "link": "#283745"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Arial",
+      "heading": "Arial"
+    },
+    "fontStacks": {
+      "heading": [
+        "Open Sans",
+        "sans-serif"
+      ],
+      "body": [
+        "prometo",
+        "Open Sans",
+        "Arial",
+        "Microsoft Yahei",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Open Sans",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "20.25px",
+      "h2": "20.25px",
+      "body": "20.25px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "3px"
+  },
+  "components": {
+    "buttonPrimary": {
+      "background": "#2563EB",
+      "textColor": "#FFFFFF",
+      "borderRadius": "4px",
+      "borderRadiusCorners": {
+        "topLeft": "4px",
+        "topRight": "4px",
+        "bottomRight": "4px",
+        "bottomLeft": "4px"
+      },
+      "shadow": "none"
+    },
+    "buttonSecondary": {
+      "background": "#373D41",
+      "textColor": "#F5F5F5",
+      "borderRadius": "0px",
+      "borderRadiusCorners": {
+        "topLeft": "0px",
+        "topRight": "0px",
+        "bottomRight": "0px",
+        "bottomLeft": "0px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg",
+    "favicon": "https://stuertz.com/wp-content/uploads/sites/2/2024/05/cropped-apple-icon-180x180-1-32x32.png",
+    "ogImage": null,
+    "logoHref": "https://stuertz.com/us"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 1,
+    "reasoning": "Selected #0 because it is visible, located in the header, and matches the brand inferred from the URL and page title ('Sturtz Machinery Inc.').",
+    "confidence": 0.9,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 3,
+      "text": "I accept all",
+      "reasoning": "Button #2 ('I accept all') uses the vibrant brand color #2563EB, which is a strong indicator of a primary CTA. The text is action-oriented, making it a suitable primary button."
+    },
+    "secondary": {
+      "index": 0,
+      "text": "Contact",
+      "reasoning": "Button #0 ('Contact') has a neutral background color #373D41, which is distinct from the primary button's color group, making it a suitable secondary button."
+    },
+    "confidence": 0.95
+  },
+  "personality": {
+    "tone": "professional",
+    "energy": "medium",
+    "targetAudience": "industrial professionals"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.95,
+    "colors": 0.9,
+    "overall": 0.925
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, and matches the brand inferred from the URL and page title ('Sturtz Machinery Inc.').",
+        "confidence": 0.9
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
