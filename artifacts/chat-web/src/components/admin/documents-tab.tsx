@@ -41,7 +41,7 @@ export function DocumentsTab() {
         const hasPending = query.state.data?.some(d => 
           d.status === DocumentStatus.pending || d.status === DocumentStatus.ingesting
         );
-        return hasPending ? 5000 : false;
+        return hasPending ? 2000 : false;
       }
     }
   });
@@ -158,18 +158,58 @@ export function DocumentsTab() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case DocumentStatus.ready:
-        return <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">Ready</Badge>;
-      case DocumentStatus.pending:
-      case DocumentStatus.ingesting:
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Processing</Badge>;
-      case DocumentStatus.failed:
-        return <Badge variant="destructive">Failed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const getStatusCell = (doc: { status: string; ingestProgress: number; ingestTotalPages: number }) => {
+    const { status, ingestProgress, ingestTotalPages } = doc;
+    if (status === DocumentStatus.ready) {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">Ready</Badge>
+        </div>
+      );
     }
+    if (status === DocumentStatus.failed) {
+      return <Badge variant="destructive">Failed</Badge>;
+    }
+    if (status === DocumentStatus.pending || status === DocumentStatus.ingesting) {
+      // Phase 1: haven't started parsing yet (total = 0)
+      if (ingestTotalPages === 0) {
+        return (
+          <div className="space-y-1.5 min-w-[140px]">
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 flex items-center gap-1 w-fit">
+              <Loader2 className="w-3 h-3 animate-spin" /> Initializing…
+            </Badge>
+          </div>
+        );
+      }
+      // Phase 2: pages are being extracted and stored
+      if (ingestProgress < ingestTotalPages) {
+        const pct = Math.round((ingestProgress / ingestTotalPages) * 100);
+        return (
+          <div className="space-y-1.5 min-w-[160px]">
+            <div className="flex items-center justify-between text-xs text-blue-700">
+              <span className="flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Extracting pages
+              </span>
+              <span className="font-medium tabular-nums">{ingestProgress} / {ingestTotalPages}</span>
+            </div>
+            <Progress value={pct} className="h-1.5" />
+          </div>
+        );
+      }
+      // Phase 3: all pages stored, now building the semantic index (LLM calls)
+      return (
+        <div className="space-y-1.5 min-w-[160px]">
+          <div className="flex items-center justify-between text-xs text-blue-700">
+            <span className="flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> Building index
+            </span>
+            <span className="font-medium tabular-nums">{ingestTotalPages} pages</span>
+          </div>
+          <Progress value={100} className="h-1.5 [&>div]:animate-pulse" />
+        </div>
+      );
+    }
+    return <Badge variant="outline">{status}</Badge>;
   };
 
   return (
@@ -281,7 +321,7 @@ export function DocumentsTab() {
                   </td>
                   <td className="px-6 py-4 text-gray-500">{formatBytes(doc.size)}</td>
                   <td className="px-6 py-4">
-                    {getStatusBadge(doc.status)}
+                    {getStatusCell(doc)}
                   </td>
                   <td className="px-6 py-4 text-gray-500">
                     {format(new Date(doc.createdAt), "MMM d, yyyy")}

@@ -11,6 +11,12 @@ export const documentsTable = pgTable("documents", {
   status: text("status", { enum: ["pending", "ingesting", "ready", "failed"] })
     .notNull()
     .default("pending"),
+  // Incremental ingest progress: pages stored so far and total pages in the document.
+  // Both are 0 before ingestion starts. Once pages are being stored the Python
+  // RAG service increments ingestProgress after each page so the admin UI can
+  // render a real progress bar.
+  ingestProgress: integer("ingest_progress").notNull().default(0),
+  ingestTotalPages: integer("ingest_total_pages").notNull().default(0),
   // PageIndex-generated tree-of-contents structure (vectorless RAG).
   // Populated by the RAG service after a successful ingest.
   treeStructure: jsonb("tree_structure"),
