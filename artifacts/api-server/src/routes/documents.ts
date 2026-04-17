@@ -1,10 +1,19 @@
 import { Router, type IRouter } from "express";
+import multer from "multer";
+import path from "path";
 import { eq, desc } from "drizzle-orm";
 import { db, documentsTable, documentChunksTable } from "@workspace/db";
 import { RegisterDocumentBody } from "@workspace/api-zod";
 import { authenticate, requireAdmin } from "../lib/auth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { parseUuidParam } from "../lib/validation";
+
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // 100MB
+const ALLOWED_EXTS = new Set([".pdf", ".docx", ".doc", ".txt", ".md", ".html", ".htm", ".pptx", ".ppt"]);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES },
+});
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -50,6 +59,76 @@ router.get("/documents/:id/view", authenticate, async (req, res): Promise<void> 
   const anchor = page ? `#page=${encodeURIComponent(String(page))}` : "";
   res.redirect(`/api/storage${doc.filePath}${anchor}`);
 });
+
+// Admin: multipart upload (up to 100MB). Streams the file to object storage,
+// then registers the document and triggers ingestion.
+router.post(
+  "/admin/documents/upload",
+  authenticate,
+  requireAdmin,
+  (req, res, next): void => {
+    upload.single("file")(req, res, (err: unknown) => {
+      if (err) {
+        const e = err as { code?: string; message?: string };
+        if (e.code === "LIMIT_FILE_SIZE") {
+          res.status(413).json({ error: "File too large (max 100MB)" });
+          return;
+        }
+        res.status(400).json({ error: e.message || "Upload error" });
+        return;
+      }
+      next();
+    });
+  },
+  async (req, res): Promise<void> => {
+    const file = (req as unknown as { file?: Express.Multer.File }).file;
+    const title = (req.body as { title?: string } | undefined)?.title?.trim();
+    if (!file) {
+      res.status(400).json({ error: "Missing file" });
+      return;
+    }
+    if (!title) {
+      res.status(400).json({ error: "Missing title" });
+      return;
+    }
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_EXTS.has(ext)) {
+      res.status(400).json({ error: `Unsupported file type: ${ext}` });
+      return;
+    }
+    try {
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.mimetype || "application/octet-stream" },
+        body: file.buffer,
+      });
+      if (!putRes.ok) {
+        req.log.error({ status: putRes.status }, "GCS upload failed");
+        res.status(502).json({ error: "Object storage upload failed" });
+        return;
+      }
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const [doc] = await db
+        .insert(documentsTable)
+        .values({
+          title,
+          filename: file.originalname,
+          filePath: objectPath,
+          fileType: file.mimetype || ext.slice(1) || "application/octet-stream",
+          size: file.size,
+          status: "pending",
+          uploadedBy: req.user!.id,
+        })
+        .returning();
+      triggerIngestion(doc.id, doc.filePath, doc.fileType).catch(() => {});
+      res.status(201).json(doc);
+    } catch (error) {
+      req.log.error({ err: error }, "Document upload failed");
+      res.status(500).json({ error: "Document upload failed" });
+    }
+  },
+);
 
 // Admin: register an uploaded document
 router.post("/admin/documents", authenticate, requireAdmin, async (req, res): Promise<void> => {

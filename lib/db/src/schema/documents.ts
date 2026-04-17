@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, jsonb, vector, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const documentsTable = pgTable("documents", {
@@ -17,16 +17,25 @@ export const documentsTable = pgTable("documents", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const documentChunksTable = pgTable("document_chunks", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documentsTable.id, { onDelete: "cascade" }),
-  pageNumber: integer("page_number").notNull(),
-  chunkText: text("chunk_text").notNull(),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// Embedding dimension matches AWS Bedrock Titan Text Embeddings v2 (1024).
+// The Python RAG service writes/reads this column.
+export const documentChunksTable = pgTable(
+  "document_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documentsTable.id, { onDelete: "cascade" }),
+    pageNumber: integer("page_number").notNull(),
+    chunkText: text("chunk_text").notNull(),
+    embedding: vector("embedding", { dimensions: 1024 }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    docIdIdx: index("document_chunks_document_id_idx").on(table.documentId),
+  }),
+);
 
 export type Document = typeof documentsTable.$inferSelect;
 export type InsertDocument = typeof documentsTable.$inferInsert;

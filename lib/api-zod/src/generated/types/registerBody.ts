@@ -5,10 +5,9 @@
  * Sturtz Maschinenbau Support Chatbot API
  * OpenAPI spec version: 0.1.0
  */
-import type { User } from "./user";
 
-export interface AuthResponse {
-  token: string;
-  refreshToken: string;
-  user: User;
+export interface RegisterBody {
+  email: string;
+  name: string;
+  password: string;
 }

@@ -1,8 +1,9 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { randomBytes } from "crypto";
 import type { Request, Response, NextFunction } from "express";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, sessionsTable } from "@workspace/db";
+import { and, eq, gt } from "drizzle-orm";
 import { logger } from "./logger";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
@@ -22,8 +23,10 @@ function resolveJwtSecret(): string {
 }
 
 const JWT_SECRET = resolveJwtSecret();
-const JWT_EXPIRES_IN = "7d";
-const COOKIE_NAME = "sturtz_token";
+const ACCESS_TOKEN_TTL = "1h";
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const ACCESS_COOKIE = "sturtz_token";
+const REFRESH_COOKIE = "sturtz_refresh";
 
 export interface AuthUser {
   id: string;
@@ -48,15 +51,15 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(user: AuthUser): string {
+export function signAccessToken(user: AuthUser): string {
   return jwt.sign(
     { sub: user.id, email: user.email, name: user.name, role: user.role },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN },
+    { expiresIn: ACCESS_TOKEN_TTL },
   );
 }
 
-export function verifyToken(token: string): AuthUser | null {
+export function verifyAccessToken(token: string): AuthUser | null {
   try {
     const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
     if (!payload.sub || typeof payload.sub !== "string") return null;
@@ -71,22 +74,103 @@ export function verifyToken(token: string): AuthUser | null {
   }
 }
 
-export function setAuthCookie(res: Response, token: string): void {
-  res.cookie(COOKIE_NAME, token, {
+export interface IssuedSession {
+  accessToken: string;
+  refreshToken: string;
+  refreshExpiresAt: Date;
+}
+
+export async function createSession(user: AuthUser): Promise<IssuedSession> {
+  const refreshToken = randomBytes(48).toString("hex");
+  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+  await db.insert(sessionsTable).values({
+    userId: user.id,
+    refreshTokenHash,
+    expiresAt,
+  });
+  return {
+    accessToken: signAccessToken(user),
+    refreshToken,
+    refreshExpiresAt: expiresAt,
+  };
+}
+
+export async function rotateSession(refreshToken: string): Promise<{
+  user: AuthUser;
+  session: IssuedSession;
+} | null> {
+  if (!refreshToken) return null;
+  // Look up valid sessions; we have to bcrypt-compare since we only store hashes.
+  const candidates = await db
+    .select()
+    .from(sessionsTable)
+    .where(gt(sessionsTable.expiresAt, new Date()));
+  let matched = null;
+  for (const s of candidates) {
+    if (await bcrypt.compare(refreshToken, s.refreshTokenHash)) {
+      matched = s;
+      break;
+    }
+  }
+  if (!matched) return null;
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, matched.userId));
+  if (!user) return null;
+  // Rotate: delete old session, create new one.
+  await db.delete(sessionsTable).where(eq(sessionsTable.id, matched.id));
+  const authUser: AuthUser = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role as "admin" | "user",
+  };
+  const session = await createSession(authUser);
+  return { user: authUser, session };
+}
+
+export async function revokeAllUserSessions(userId: string): Promise<void> {
+  await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+}
+
+export function setAuthCookies(
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+  refreshExpiresAt: Date,
+): void {
+  res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    secure: IS_PRODUCTION,
+    maxAge: 60 * 60 * 1000,
+    path: "/",
+  });
+  res.cookie(REFRESH_COOKIE, refreshToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: IS_PRODUCTION,
+    expires: refreshExpiresAt,
     path: "/",
   });
 }
 
-export function clearAuthCookie(res: Response): void {
-  res.clearCookie(COOKIE_NAME, { path: "/" });
+export function clearAuthCookies(res: Response): void {
+  res.clearCookie(ACCESS_COOKIE, { path: "/" });
+  res.clearCookie(REFRESH_COOKIE, { path: "/" });
 }
 
-function extractToken(req: Request): string | null {
-  const cookieToken = req.cookies?.[COOKIE_NAME];
+export function getRefreshTokenFromRequest(req: Request): string | null {
+  const cookieToken = req.cookies?.[REFRESH_COOKIE];
+  if (cookieToken) return cookieToken;
+  const bodyToken = (req.body as { refreshToken?: string } | undefined)?.refreshToken;
+  return bodyToken ?? null;
+}
+
+function extractAccessToken(req: Request): string | null {
+  const cookieToken = req.cookies?.[ACCESS_COOKIE];
   if (cookieToken) return cookieToken;
   const auth = req.headers.authorization;
   if (auth?.startsWith("Bearer ")) return auth.slice("Bearer ".length);
@@ -98,17 +182,16 @@ export async function authenticate(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const token = extractToken(req);
+  const token = extractAccessToken(req);
   if (!token) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const user = verifyToken(token);
+  const user = verifyAccessToken(token);
   if (!user) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  // Verify user still exists in DB
   const [dbUser] = await db
     .select()
     .from(usersTable)
