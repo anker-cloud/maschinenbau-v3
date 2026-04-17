@@ -16,7 +16,7 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary Self-service signup (creates a 'user' role account)
+ * @summary Admin-only account creation (creates a 'user' role account)
  */
 export const RegisterBody = zod.object({
   email: zod.string(),
