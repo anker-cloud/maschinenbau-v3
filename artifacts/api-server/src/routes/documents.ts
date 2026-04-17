@@ -37,10 +37,11 @@ async function triggerIngestion(
   createdAt: Date,
   log: { warn: (...a: unknown[]) => void; error: (...a: unknown[]) => void },
 ): Promise<void> {
-  // Kicked off async by the upload/register handlers. We don't await the
-  // ingestion completion (it can take a while), but we do mark the document
-  // `failed` if the kick-off itself returns a non-2xx so it doesn't get stuck
-  // on `pending` forever.
+  // POST /rag/ingest now returns 202 immediately after enqueuing the job.
+  // The RAG service worker processes documents one at a time in the background
+  // and updates the document status in the DB directly.
+  // We only set `failed` here if the RAG service is unreachable or rejects
+  // the request outright (4xx/5xx on the enqueue call itself).
   const alertOnFailure = () =>
     sendIngestionFailureAlert({ id: documentId, title, filename, createdAt }).catch(() => {});
 
@@ -54,11 +55,11 @@ async function triggerIngestion(
         file_type: fileType,
         filename,
       }),
-      signal: AbortSignal.timeout(15 * 60_000),
+      signal: AbortSignal.timeout(30_000), // just waiting for queue acceptance
     });
     if (!r.ok) {
       const body = await r.text().catch(() => "");
-      log.error({ status: r.status, body, documentId }, "RAG ingest returned non-2xx");
+      log.error({ status: r.status, body, documentId }, "RAG ingest enqueue returned non-2xx");
       await db
         .update(documentsTable)
         .set({ status: "failed" })
@@ -66,7 +67,7 @@ async function triggerIngestion(
       void alertOnFailure();
     }
   } catch (err) {
-    log.warn({ err, documentId }, "RAG ingest call failed");
+    log.warn({ err, documentId }, "RAG ingest enqueue call failed (service unreachable?)");
     await db
       .update(documentsTable)
       .set({ status: "failed" })
