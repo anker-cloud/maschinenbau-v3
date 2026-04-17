@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { LoginBody, RegisterBody } from "@workspace/api-zod";
+import { ChangePasswordBody, LoginBody, RegisterBody } from "@workspace/api-zod";
 import {
   authenticate,
   clearAuthCookies,
@@ -9,6 +9,7 @@ import {
   getRefreshTokenFromRequest,
   hashPassword,
   requireAdmin,
+  revokeAllUserSessions,
   revokeRefreshToken,
   rotateSession,
   setAuthCookies,
@@ -151,6 +152,60 @@ router.get("/auth/me", authenticate, async (req, res): Promise<void> => {
     return;
   }
   res.json(userToResponse(user));
+});
+
+router.post("/auth/change-password", authenticate, async (req, res): Promise<void> => {
+  const parsed = ChangePasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  const { currentPassword, newPassword } = parsed.data;
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: "New password must be at least 8 characters" });
+    return;
+  }
+  if (currentPassword === newPassword) {
+    res.status(400).json({ error: "New password must differ from current password" });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id));
+  if (!user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const ok = await verifyPassword(currentPassword, user.passwordHash);
+  if (!ok) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+  const newHash = await hashPassword(newPassword);
+  // Floor to whole seconds: JWT iat is in seconds, so a sub-second
+  // passwordChangedAt would falsely reject the brand-new access token we are
+  // about to mint for this caller.
+  const passwordChangedAt = new Date(Math.floor(Date.now() / 1000) * 1000);
+  await db
+    .update(usersTable)
+    .set({ passwordHash: newHash, passwordChangedAt })
+    .where(eq(usersTable.id, user.id));
+  // Invalidate every existing refresh-token session so any stolen cookie is
+  // dead. Existing access tokens (JWTs) are rejected by `authenticate` via the
+  // passwordChangedAt check above.
+  await revokeAllUserSessions(user.id);
+  // Issue a fresh session for the active caller so they stay signed in.
+  const authUser: AuthUser = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role as "admin" | "user",
+  };
+  const session = await createSession(authUser);
+  setAuthCookies(res, session.accessToken, session.refreshToken, session.refreshExpiresAt);
+  res.json({
+    token: session.accessToken,
+    refreshToken: session.refreshToken,
+    user: userToResponse(user),
+  });
 });
 
 export default router;

@@ -45,6 +45,11 @@ export interface RegisterBody {
   password: string;
 }
 
+export interface ChangePasswordBody {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface RefreshBody {
   refreshToken?: string;
 }

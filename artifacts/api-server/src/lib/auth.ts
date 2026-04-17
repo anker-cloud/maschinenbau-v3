@@ -59,15 +59,24 @@ export function signAccessToken(user: AuthUser): string {
   );
 }
 
-export function verifyAccessToken(token: string): AuthUser | null {
+export interface VerifiedAccessToken {
+  user: AuthUser;
+  /** JWT issued-at time in seconds since epoch (as set by jsonwebtoken). */
+  issuedAtSeconds: number | null;
+}
+
+export function verifyAccessToken(token: string): VerifiedAccessToken | null {
   try {
     const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
     if (!payload.sub || typeof payload.sub !== "string") return null;
     return {
-      id: payload.sub,
-      email: payload.email as string,
-      name: payload.name as string,
-      role: payload.role as "admin" | "user",
+      user: {
+        id: payload.sub,
+        email: payload.email as string,
+        name: payload.name as string,
+        role: payload.role as "admin" | "user",
+      },
+      issuedAtSeconds: typeof payload.iat === "number" ? payload.iat : null,
     };
   } catch {
     return null;
@@ -221,18 +230,27 @@ export async function authenticate(
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const user = verifyAccessToken(token);
-  if (!user) {
+  const verified = verifyAccessToken(token);
+  if (!verified) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const [dbUser] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, user.id));
+    .where(eq(usersTable.id, verified.user.id));
   if (!dbUser) {
     res.status(401).json({ error: "Unauthorized" });
     return;
+  }
+  // Reject access tokens issued before the user's most recent password
+  // change. JWT iat is in whole seconds, so compare on a 1-second granularity.
+  if (dbUser.passwordChangedAt && verified.issuedAtSeconds !== null) {
+    const changedAtSeconds = Math.floor(dbUser.passwordChangedAt.getTime() / 1000);
+    if (verified.issuedAtSeconds < changedAtSeconds) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
   }
   req.user = {
     id: dbUser.id,

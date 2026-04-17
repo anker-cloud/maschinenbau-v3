@@ -75,6 +75,30 @@ export const GetCurrentUserResponse = zod.object({
 });
 
 /**
+ * Verifies the current password, updates the bcrypt hash, and invalidates
+all existing sessions for the user. A fresh session is issued for the
+caller so they remain logged in.
+
+ * @summary Change the current user's password
+ */
+export const ChangePasswordBody = zod.object({
+  currentPassword: zod.string(),
+  newPassword: zod.string(),
+});
+
+export const ChangePasswordResponse = zod.object({
+  token: zod.string(),
+  refreshToken: zod.string(),
+  user: zod.object({
+    id: zod.string().uuid(),
+    email: zod.string(),
+    name: zod.string(),
+    role: zod.enum(["admin", "user"]),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
  * @summary List all users (admin only)
  */
 export const ListUsersResponseItem = zod.object({
