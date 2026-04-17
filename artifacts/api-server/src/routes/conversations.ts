@@ -15,7 +15,8 @@ import { parseUuidParam } from "../lib/validation";
 const router: IRouter = Router();
 router.use(authenticate);
 
-const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://127.0.0.1:8001";
+const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://127.0.0.1:8000";
+const RAG_INTERNAL_SECRET = process.env.RAG_INTERNAL_SECRET || "";
 
 router.get("/conversations", async (req, res): Promise<void> => {
   const convs = await db
@@ -107,15 +108,17 @@ router.post("/conversations/:id/messages", async (req, res): Promise<void> => {
   let assistantContent = "";
   let citations: Array<{ documentId: string; documentTitle: string; pageNumber: number; snippet: string }> = [];
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (RAG_INTERNAL_SECRET) headers["X-Internal-Secret"] = RAG_INTERNAL_SECRET;
     const ragResp = await fetch(`${RAG_SERVICE_URL}/rag/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         conversation_id: id,
         message: parsed.data.content,
         history: history.map((m) => ({ role: m.role, content: m.content })),
       }),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(120_000),
     });
     if (ragResp.ok) {
       const data = await ragResp.json() as { content: string; citations?: typeof citations };

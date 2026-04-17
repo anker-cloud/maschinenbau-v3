@@ -1,0 +1,18 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "boto3>=1.42.90",
+    "fastapi>=0.136.0",
+    "google-auth>=2.49.2",
+    "google-cloud-storage>=3.10.1",
+    "httpx>=0.28.1",
+    "pgvector>=0.4.2",
+    "psycopg[binary]>=3.3.3",
+    "pydantic>=2.13.2",
+    "pypdf>=6.10.2",
+    "python-docx>=1.2.0",
+    "uvicorn[standard]>=0.44.0",
+]
