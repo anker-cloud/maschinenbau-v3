@@ -11,6 +11,9 @@ export const documentsTable = pgTable("documents", {
   status: text("status", { enum: ["pending", "ingesting", "ready", "failed"] })
     .notNull()
     .default("pending"),
+  // PageIndex-generated tree-of-contents structure (vectorless RAG).
+  // Populated by the RAG service after a successful ingest.
+  treeStructure: jsonb("tree_structure"),
   uploadedBy: uuid("uploaded_by")
     .notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
