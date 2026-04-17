@@ -46,6 +46,17 @@ def update_document_status(document_id: str, status: str) -> None:
         )
 
 
+def update_document_progress(
+    document_id: str, progress: int, total_pages: int
+) -> None:
+    """Write page-level ingest progress so the admin UI can show a real progress bar."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE documents SET ingest_progress = %s, ingest_total_pages = %s WHERE id = %s",
+            (progress, total_pages, document_id),
+        )
+
+
 def update_document_tree(document_id: str, tree: list[dict[str, Any]]) -> None:
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(

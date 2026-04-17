@@ -103,6 +103,7 @@ def ingest(
 
     log.info("ingest start document_id=%s path=%s", payload.document_id, payload.file_path)
     db.update_document_status(payload.document_id, "ingesting")
+    db.update_document_progress(payload.document_id, 0, 0)  # reset before starting
     try:
         # Reingest is idempotent: drop any previous per-page text.
         db.delete_chunks_for_document(payload.document_id)
@@ -110,11 +111,32 @@ def ingest(
         data = storage.download_object(payload.file_path)
 
         # 1) Persist per-page text so we can serve it back during chat.
+        #    Write progress after each page so the admin UI shows a real bar.
         pages = parsing.parse_document(data, payload.file_type, payload.filename or "")
         if not pages:
             db.update_document_status(payload.document_id, "failed")
             raise HTTPException(status_code=422, detail="Could not extract text from document")
-        db.insert_pages(payload.document_id, pages)
+
+        total = len(pages)
+        # Record total so the frontend can show "0 / N" immediately.
+        db.update_document_progress(payload.document_id, 0, total)
+
+        # Insert one page at a time and bump the counter so the admin UI
+        # can render a live "X / N pages" progress bar.
+        BATCH = 5  # commit every N pages to reduce DB round-trips
+        batch_buf: list[tuple[int, str]] = []
+        stored = 0
+        for page_num, text in pages:
+            batch_buf.append((page_num, text))
+            if len(batch_buf) >= BATCH:
+                db.insert_pages(payload.document_id, batch_buf)
+                stored += len(batch_buf)
+                batch_buf = []
+                db.update_document_progress(payload.document_id, stored, total)
+        if batch_buf:
+            db.insert_pages(payload.document_id, batch_buf)
+            stored += len(batch_buf)
+            db.update_document_progress(payload.document_id, stored, total)
 
         # 2) Build the PageIndex tree (PDF only; for non-PDF docs we use a
         #    flat single-node tree so chat retrieval can still find the file).

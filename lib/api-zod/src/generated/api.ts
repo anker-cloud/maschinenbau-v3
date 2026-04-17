@@ -173,6 +173,14 @@ export const ListDocumentsResponseItem = zod.object({
   fileType: zod.string(),
   size: zod.number(),
   status: zod.enum(["pending", "ingesting", "ready", "failed"]),
+  ingestProgress: zod
+    .number()
+    .describe(
+      "Pages stored so far during ingestion (0 before ingestion starts)",
+    ),
+  ingestTotalPages: zod
+    .number()
+    .describe("Total pages in the document (0 until parsing is complete)"),
   uploadedBy: zod.string().uuid(),
   createdAt: zod.coerce.date(),
 });

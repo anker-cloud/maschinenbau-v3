@@ -716,13 +716,19 @@ components:
         status:
           type: string
           enum: [pending, ingesting, ready, failed]
+        ingestProgress:
+          type: integer
+          description: Pages stored so far during ingestion (0 before ingestion starts)
+        ingestTotalPages:
+          type: integer
+          description: Total pages in the document (0 until parsing is complete)
         uploadedBy:
           type: string
           format: uuid
         createdAt:
           type: string
           format: date-time
-      required: [id, title, filename, filePath, fileType, size, status, uploadedBy, createdAt]
+      required: [id, title, filename, filePath, fileType, size, status, ingestProgress, ingestTotalPages, uploadedBy, createdAt]
 
     RegisterDocumentBody:
       type: object

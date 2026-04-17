@@ -15,6 +15,10 @@ export interface Document {
   fileType: string;
   size: number;
   status: DocumentStatus;
+  /** Pages stored so far during ingestion (0 before ingestion starts) */
+  ingestProgress: number;
+  /** Total pages in the document (0 until parsing is complete) */
+  ingestTotalPages: number;
   uploadedBy: string;
   createdAt: Date;
 }
