@@ -7,6 +7,7 @@ import { RegisterDocumentBody } from "@workspace/api-zod";
 import { authenticate, requireAdmin } from "../lib/auth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { parseUuidParam } from "../lib/validation";
+import { sendIngestionFailureAlert } from "../lib/email";
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // 100MB
 const ALLOWED_EXTS = new Set([".pdf", ".docx", ".doc", ".txt", ".md", ".html", ".htm", ".pptx", ".ppt"]);
@@ -32,12 +33,17 @@ async function triggerIngestion(
   filePath: string,
   fileType: string,
   filename: string,
+  title: string,
+  createdAt: Date,
   log: { warn: (...a: unknown[]) => void; error: (...a: unknown[]) => void },
 ): Promise<void> {
   // Kicked off async by the upload/register handlers. We don't await the
   // ingestion completion (it can take a while), but we do mark the document
   // `failed` if the kick-off itself returns a non-2xx so it doesn't get stuck
   // on `pending` forever.
+  const alertOnFailure = () =>
+    sendIngestionFailureAlert({ id: documentId, title, filename, createdAt }).catch(() => {});
+
   try {
     const r = await fetch(`${RAG_SERVICE_URL}/rag/ingest`, {
       method: "POST",
@@ -57,6 +63,7 @@ async function triggerIngestion(
         .update(documentsTable)
         .set({ status: "failed" })
         .where(eq(documentsTable.id, documentId));
+      void alertOnFailure();
     }
   } catch (err) {
     log.warn({ err, documentId }, "RAG ingest call failed");
@@ -65,6 +72,7 @@ async function triggerIngestion(
       .set({ status: "failed" })
       .where(eq(documentsTable.id, documentId))
       .catch(() => {});
+    void alertOnFailure();
   }
 }
 
@@ -153,7 +161,7 @@ router.post(
           uploadedBy: req.user!.id,
         })
         .returning();
-      void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, req.log);
+      void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, doc.title, doc.createdAt, req.log);
       res.status(201).json(doc);
     } catch (error) {
       req.log.error({ err: error }, "Document upload failed");
@@ -187,7 +195,7 @@ router.post("/admin/documents", authenticate, requireAdmin, async (req, res): Pr
     .returning();
 
   // Kick off ingestion (non-blocking)
-  void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, req.log);
+  void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, doc.title, doc.createdAt, req.log);
 
   res.status(201).json(doc);
 });
@@ -232,7 +240,7 @@ router.post("/admin/documents/:id/reingest", authenticate, requireAdmin, async (
     res.status(404).json({ error: "Document not found" });
     return;
   }
-  void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, req.log);
+  void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, doc.title, doc.createdAt, req.log);
   res.status(202).json(doc);
 });
 
