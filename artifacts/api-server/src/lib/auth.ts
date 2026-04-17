@@ -268,7 +268,7 @@ export async function ensureAdminUser(): Promise<void> {
     );
     return;
   }
-  const adminEmail = envEmail || "admin@sturtz.com";
+  const adminEmail = (envEmail || "admin@sturtz.com").toLowerCase().trim();
   const adminPassword = envPassword || "changeme123";
   const adminName = process.env.SEED_ADMIN_NAME || "Admin";
 
