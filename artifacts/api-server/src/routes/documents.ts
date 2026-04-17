@@ -18,21 +18,53 @@ const upload = multer({
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://127.0.0.1:8001";
+const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://127.0.0.1:8000";
+const RAG_INTERNAL_SECRET = process.env.RAG_INTERNAL_SECRET || "";
 
-async function triggerIngestion(documentId: string, filePath: string, fileType: string): Promise<void> {
-  // Fire-and-forget; the RAG service will update document status when done.
-  // The Python service is built in Task #2; until then this is a no-op that
-  // gracefully handles connection failures.
+function ragHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (RAG_INTERNAL_SECRET) h["X-Internal-Secret"] = RAG_INTERNAL_SECRET;
+  return h;
+}
+
+async function triggerIngestion(
+  documentId: string,
+  filePath: string,
+  fileType: string,
+  filename: string,
+  log: { warn: (...a: unknown[]) => void; error: (...a: unknown[]) => void },
+): Promise<void> {
+  // Kicked off async by the upload/register handlers. We don't await the
+  // ingestion completion (it can take a while), but we do mark the document
+  // `failed` if the kick-off itself returns a non-2xx so it doesn't get stuck
+  // on `pending` forever.
   try {
-    await fetch(`${RAG_SERVICE_URL}/rag/ingest`, {
+    const r = await fetch(`${RAG_SERVICE_URL}/rag/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ document_id: documentId, file_path: filePath, file_type: fileType }),
-      signal: AbortSignal.timeout(5000),
+      headers: ragHeaders(),
+      body: JSON.stringify({
+        document_id: documentId,
+        file_path: filePath,
+        file_type: fileType,
+        filename,
+      }),
+      signal: AbortSignal.timeout(15 * 60_000),
     });
-  } catch {
-    // RAG service may not yet be running; ignore.
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      log.error({ status: r.status, body, documentId }, "RAG ingest returned non-2xx");
+      await db
+        .update(documentsTable)
+        .set({ status: "failed" })
+        .where(eq(documentsTable.id, documentId));
+    }
+  } catch (err) {
+    log.warn({ err, documentId }, "RAG ingest call failed");
+    await db
+      .update(documentsTable)
+      .set({ status: "failed" })
+      .where(eq(documentsTable.id, documentId))
+      .catch(() => {});
   }
 }
 
@@ -121,7 +153,7 @@ router.post(
           uploadedBy: req.user!.id,
         })
         .returning();
-      triggerIngestion(doc.id, doc.filePath, doc.fileType).catch(() => {});
+      void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, req.log);
       res.status(201).json(doc);
     } catch (error) {
       req.log.error({ err: error }, "Document upload failed");
@@ -155,7 +187,7 @@ router.post("/admin/documents", authenticate, requireAdmin, async (req, res): Pr
     .returning();
 
   // Kick off ingestion (non-blocking)
-  triggerIngestion(doc.id, doc.filePath, doc.fileType).catch(() => {});
+  void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, req.log);
 
   res.status(201).json(doc);
 });
@@ -178,6 +210,7 @@ router.delete("/admin/documents/:id", authenticate, requireAdmin, async (req, re
   try {
     await fetch(`${RAG_SERVICE_URL}/rag/documents/${id}`, {
       method: "DELETE",
+      headers: ragHeaders(),
       signal: AbortSignal.timeout(5000),
     });
   } catch {
@@ -199,7 +232,7 @@ router.post("/admin/documents/:id/reingest", authenticate, requireAdmin, async (
     res.status(404).json({ error: "Document not found" });
     return;
   }
-  triggerIngestion(doc.id, doc.filePath, doc.fileType).catch(() => {});
+  void triggerIngestion(doc.id, doc.filePath, doc.fileType, doc.filename, req.log);
   res.status(202).json(doc);
 });
 

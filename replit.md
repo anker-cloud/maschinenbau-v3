@@ -32,7 +32,7 @@ Internal support chatbot that answers technical questions from machinery/part ma
 
 ### Architecture
 - **API server** (`artifacts/api-server`): Express 5, Node, Drizzle ORM, custom JWT auth (httpOnly cookie). Proxies chat requests to a separate Python RAG microservice.
-- **RAG service** (Task #2, not yet built): Python (PageIndex + AWS Bedrock Claude) at `RAG_SERVICE_URL` (default `http://127.0.0.1:8001`).
+- **RAG service** (`artifacts/rag-service`): Python FastAPI at `RAG_SERVICE_URL` (default `http://127.0.0.1:8000`). Uses AWS Bedrock for both embeddings (Titan v2, 1024-dim) and chat (Claude 3 Haiku by default; override via `BEDROCK_CHAT_MODEL_ID`). Page-aware chunking with overlap. Endpoints: `POST /ingest`, `POST /chat`, `DELETE /documents/{id}`, `GET /healthz`. Internal-only — protected by `X-Internal-Secret` header (`RAG_INTERNAL_SECRET`) in production.
 - **Frontend** (Task #3, not yet built): React + Vite chat UI.
 
 ### Auth
