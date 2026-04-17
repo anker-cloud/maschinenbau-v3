@@ -30,6 +30,7 @@ export * from "./requestUploadUrlResponse";
 export * from "./requestUploadUrlResponseMetadata";
 export * from "./sendMessageBody";
 export * from "./sendMessageResponse";
+export * from "./updateProfileBody";
 export * from "./uploadDocumentBody";
 export * from "./user";
 export * from "./userRole";
