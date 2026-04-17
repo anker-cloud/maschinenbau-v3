@@ -1,9 +1,9 @@
 """FastAPI entrypoint for the RAG service.
 
 PageIndex-based, vectorless RAG. The flow is:
-- Ingest: download PDF -> let PageIndex build a tree-of-contents using
-  AWS Bedrock as the LLM -> persist tree on the document row and per-page
-  text in document_chunks.
+- Ingest: POST /ingest enqueues the job and returns 202 immediately.
+  A single background worker thread drains the queue one job at a time so
+  documents are never processed concurrently.
 - Chat: load the trees of (filtered) ready documents -> ask Claude to
   *reason* about which pages to read -> fetch those pages and ask Claude
   to write a grounded answer with citations.
@@ -13,7 +13,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import re
+import threading
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -28,17 +31,120 @@ from .pageindex_runner import build_tree_from_pdf
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("rag")
 
-app = FastAPI(title="Sturtz RAG Service", root_path="/rag")
+
+# ---------------------------------------------------------------------------
+# Ingest queue — one worker thread drains it serially
+# ---------------------------------------------------------------------------
+
+_ingest_queue: queue.Queue = queue.Queue()
+_active_job: IngestRequest | None = None  # set while a job is running
+_active_lock = threading.Lock()
 
 
-def _check_secret(x_internal_secret: str | None) -> None:
-    if not RAG_INTERNAL_SECRET:
-        return
-    if x_internal_secret != RAG_INTERNAL_SECRET:
-        raise HTTPException(status_code=401, detail="Invalid internal secret")
+def _process_ingest(payload: "IngestRequest") -> None:
+    """Blocking ingest logic. Runs inside the single worker thread."""
+    global _active_job
+    with _active_lock:
+        _active_job = payload
+    log.info("worker: ingest start document_id=%s path=%s", payload.document_id, payload.file_path)
+    db.update_document_status(payload.document_id, "ingesting")
+    db.update_document_progress(payload.document_id, 0, 0)
+    try:
+        # Reingest is idempotent: drop any previous per-page text.
+        db.delete_chunks_for_document(payload.document_id)
+
+        data = storage.download_object(payload.file_path)
+
+        pages = parsing.parse_document(data, payload.file_type, payload.filename or "")
+        if not pages:
+            db.update_document_status(payload.document_id, "failed")
+            log.error("worker: no pages extracted document_id=%s", payload.document_id)
+            return
+
+        total = len(pages)
+        db.update_document_progress(payload.document_id, 0, total)
+
+        BATCH = 5
+        batch_buf: list[tuple[int, str]] = []
+        stored = 0
+        for page_num, text in pages:
+            batch_buf.append((page_num, text))
+            if len(batch_buf) >= BATCH:
+                db.insert_pages(payload.document_id, batch_buf)
+                stored += len(batch_buf)
+                batch_buf = []
+                db.update_document_progress(payload.document_id, stored, total)
+        if batch_buf:
+            db.insert_pages(payload.document_id, batch_buf)
+            stored += len(batch_buf)
+            db.update_document_progress(payload.document_id, stored, total)
+
+        ft = (payload.file_type or "").lower()
+        name = (payload.filename or "").lower()
+        is_pdf = "pdf" in ft or name.endswith(".pdf")
+        if is_pdf:
+            tree = build_tree_from_pdf(data)
+        else:
+            tree = [
+                {
+                    "title": payload.filename or "Document",
+                    "node_id": "root",
+                    "start_index": 1,
+                    "end_index": len(pages),
+                    "summary": "Full document (non-PDF, no PageIndex tree)",
+                }
+            ]
+        db.update_document_tree(payload.document_id, tree)
+        db.update_document_status(payload.document_id, "ready")
+        log.info(
+            "worker: ingest done document_id=%s pages=%d nodes=%d",
+            payload.document_id,
+            len(pages),
+            _count_nodes(tree),
+        )
+    except Exception:
+        log.exception("worker: ingest failed document_id=%s", payload.document_id)
+        db.update_document_status(payload.document_id, "failed")
+    finally:
+        with _active_lock:
+            _active_job = None
 
 
-# ---------- Schemas ----------
+def _worker() -> None:
+    """Drain _ingest_queue one job at a time. Runs in a daemon thread."""
+    while True:
+        payload = _ingest_queue.get()
+        if payload is None:  # shutdown signal
+            break
+        try:
+            _process_ingest(payload)
+        except Exception:
+            log.exception("worker: unhandled error (should not happen)")
+        finally:
+            _ingest_queue.task_done()
+
+
+# ---------------------------------------------------------------------------
+# App lifecycle
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    t = threading.Thread(target=_worker, daemon=True, name="ingest-worker")
+    t.start()
+    log.info("ingest worker thread started")
+    yield
+    # Graceful shutdown: send sentinel and wait for current job to finish
+    _ingest_queue.put(None)
+    t.join(timeout=5)
+
+
+app = FastAPI(title="Sturtz RAG Service", root_path="/rag", lifespan=lifespan)
+
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
 
 class IngestRequest(BaseModel):
     document_id: str
@@ -47,11 +153,10 @@ class IngestRequest(BaseModel):
     filename: str | None = None
 
 
-class IngestResponse(BaseModel):
+class IngestQueued(BaseModel):
     document_id: str
-    status: str
-    pages: int
-    nodes: int
+    status: str = "queued"
+    queue_depth: int
 
 
 class Citation(BaseModel):
@@ -78,12 +183,9 @@ class ChatResponse(BaseModel):
     citations: list[Citation]
 
 
-# ---------- Routes ----------
-
-@app.get("/healthz")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
-
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _count_nodes(tree: list[dict[str, Any]]) -> int:
     n = 0
@@ -94,87 +196,60 @@ def _count_nodes(tree: list[dict[str, Any]]) -> int:
     return n
 
 
-@app.post("/ingest", response_model=IngestResponse)
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+def _check_secret(x_internal_secret: str | None) -> None:
+    if not RAG_INTERNAL_SECRET:
+        return
+    if x_internal_secret != RAG_INTERNAL_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid internal secret")
+
+
+@app.get("/healthz")
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/ingest", status_code=202, response_model=IngestQueued)
 def ingest(
     payload: IngestRequest,
     x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
-) -> IngestResponse:
+) -> IngestQueued:
+    """Enqueue the document for indexing and return 202 immediately.
+
+    The single background worker processes queued jobs one at a time so
+    ingestion never runs concurrently.
+    """
     _check_secret(x_internal_secret)
 
-    log.info("ingest start document_id=%s path=%s", payload.document_id, payload.file_path)
-    db.update_document_status(payload.document_id, "ingesting")
-    db.update_document_progress(payload.document_id, 0, 0)  # reset before starting
-    try:
-        # Reingest is idempotent: drop any previous per-page text.
-        db.delete_chunks_for_document(payload.document_id)
+    # Reset to pending so the UI shows the spinner while it waits in queue
+    db.update_document_status(payload.document_id, "pending")
+    db.update_document_progress(payload.document_id, 0, 0)
 
-        data = storage.download_object(payload.file_path)
+    _ingest_queue.put(payload)
+    depth = _ingest_queue.qsize()
+    log.info(
+        "ingest queued document_id=%s queue_depth=%d",
+        payload.document_id,
+        depth,
+    )
+    return IngestQueued(document_id=payload.document_id, queue_depth=depth)
 
-        # 1) Persist per-page text so we can serve it back during chat.
-        #    Write progress after each page so the admin UI shows a real bar.
-        pages = parsing.parse_document(data, payload.file_type, payload.filename or "")
-        if not pages:
-            db.update_document_status(payload.document_id, "failed")
-            raise HTTPException(status_code=422, detail="Could not extract text from document")
 
-        total = len(pages)
-        # Record total so the frontend can show "0 / N" immediately.
-        db.update_document_progress(payload.document_id, 0, total)
-
-        # Insert one page at a time and bump the counter so the admin UI
-        # can render a live "X / N pages" progress bar.
-        BATCH = 5  # commit every N pages to reduce DB round-trips
-        batch_buf: list[tuple[int, str]] = []
-        stored = 0
-        for page_num, text in pages:
-            batch_buf.append((page_num, text))
-            if len(batch_buf) >= BATCH:
-                db.insert_pages(payload.document_id, batch_buf)
-                stored += len(batch_buf)
-                batch_buf = []
-                db.update_document_progress(payload.document_id, stored, total)
-        if batch_buf:
-            db.insert_pages(payload.document_id, batch_buf)
-            stored += len(batch_buf)
-            db.update_document_progress(payload.document_id, stored, total)
-
-        # 2) Build the PageIndex tree (PDF only; for non-PDF docs we use a
-        #    flat single-node tree so chat retrieval can still find the file).
-        ft = (payload.file_type or "").lower()
-        name = (payload.filename or "").lower()
-        is_pdf = "pdf" in ft or name.endswith(".pdf")
-        if is_pdf:
-            tree = build_tree_from_pdf(data)
-        else:
-            tree = [
-                {
-                    "title": payload.filename or "Document",
-                    "node_id": "root",
-                    "start_index": 1,
-                    "end_index": len(pages),
-                    "summary": "Full document (non-PDF, no PageIndex tree)",
-                }
-            ]
-        db.update_document_tree(payload.document_id, tree)
-        db.update_document_status(payload.document_id, "ready")
-        log.info(
-            "ingest done document_id=%s pages=%d nodes=%d",
-            payload.document_id,
-            len(pages),
-            _count_nodes(tree),
-        )
-        return IngestResponse(
-            document_id=payload.document_id,
-            status="ready",
-            pages=len(pages),
-            nodes=_count_nodes(tree),
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        log.exception("ingest failed document_id=%s", payload.document_id)
-        db.update_document_status(payload.document_id, "failed")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/queue")
+def queue_status(
+    x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
+) -> dict[str, Any]:
+    """Return current queue depth and which document is actively being processed."""
+    _check_secret(x_internal_secret)
+    with _active_lock:
+        active = _active_job.document_id if _active_job else None
+    return {
+        "depth": _ingest_queue.qsize(),
+        "active_document_id": active,
+    }
 
 
 @app.delete("/documents/{document_id}")
@@ -187,7 +262,9 @@ def delete_document(
     return {"document_id": document_id, "deleted_chunks": deleted}
 
 
-# ---------- Chat (PageIndex reasoning) ----------
+# ---------------------------------------------------------------------------
+# Chat (PageIndex two-step reasoning)
+# ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT = """You are the Sturtz Maschinenbau technical support assistant.
 You help engineers and operators diagnose and resolve issues with Sturtz machinery and parts.
@@ -232,21 +309,14 @@ def _summarize_tree(tree: list[dict[str, Any]], depth: int = 0, max_depth: int =
 
 
 def _extract_json_object(text: str) -> dict[str, Any] | None:
-    """Extract a JSON object from an LLM response.
-
-    Tolerates prose wrapping, fenced blocks, and trailing commentary by
-    finding the first `{` and walking to its matching `}`.
-    """
     if not text:
         return None
-    # Prefer ```json ... ``` fenced blocks if present.
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fenced:
         try:
             return json.loads(fenced.group(1))
         except json.JSONDecodeError:
             pass
-    # Otherwise walk braces to find a balanced object.
     start = text.find("{")
     while start != -1:
         depth = 0
@@ -280,16 +350,11 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
 
 
 def _coerce_pages(raw_pages: Any) -> list[int]:
-    """Best-effort coercion of planner page selections.
-
-    Accepts ints, numeric strings, and dash-ranges like "3-5". Anything
-    unparseable is silently dropped (per-item) instead of raising.
-    """
     out: list[int] = []
     if not isinstance(raw_pages, list):
         return out
     for p in raw_pages:
-        if isinstance(p, bool):  # bool is a subclass of int — skip
+        if isinstance(p, bool):
             continue
         if isinstance(p, int):
             if p > 0:
