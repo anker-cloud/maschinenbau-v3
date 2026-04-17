@@ -8,6 +8,7 @@
 
 export * from "./authResponse";
 export * from "./changePasswordBody";
+export * from "./checkEmailAvailabilityParams";
 export * from "./citation";
 export * from "./conversation";
 export * from "./conversationDetail";
@@ -16,6 +17,7 @@ export * from "./createUserBody";
 export * from "./createUserBodyRole";
 export * from "./document";
 export * from "./documentStatus";
+export * from "./emailAvailabilityResponse";
 export * from "./errorResponse";
 export * from "./getDocumentViewUrlParams";
 export * from "./healthStatus";

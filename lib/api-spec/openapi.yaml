@@ -137,6 +137,38 @@ paths:
         "204":
           description: Logged out
 
+  /auth/check-email:
+    get:
+      operationId: checkEmailAvailability
+      tags: [auth]
+      summary: Check whether an email address is available (authenticated; excludes current user's own email)
+      parameters:
+        - in: query
+          name: email
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Availability result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailAvailabilityResponse"
+        "400":
+          description: Missing or invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /auth/me:
     get:
       operationId: getCurrentUser
@@ -621,6 +653,15 @@ components:
           type: string
       required:
         - error
+
+    EmailAvailabilityResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+          description: true if the email is not in use by another account
+      required:
+        - available
 
     User:
       type: object

@@ -1,10 +1,10 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { useUpdateProfile, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useUpdateProfile, getGetCurrentUserQueryKey, checkEmailAvailability } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+type EmailStatus = "idle" | "checking" | "available" | "taken";
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,17 +35,50 @@ type Props = {
 export function EditProfileDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: user?.name ?? "", email: user?.email ?? "" },
   });
 
+  const watchedEmail = useWatch({ control: form.control, name: "email" });
+
   useEffect(() => {
     if (open) {
       form.reset({ name: user?.name ?? "", email: user?.email ?? "" });
+      setEmailStatus("idle");
     }
   }, [open, user, form]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!watchedEmail || !watchedEmail.includes("@")) {
+      setEmailStatus("idle");
+      return;
+    }
+
+    if (watchedEmail === user?.email) {
+      setEmailStatus("idle");
+      return;
+    }
+
+    setEmailStatus("checking");
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await checkEmailAvailability({ email: watchedEmail });
+        setEmailStatus(result.available ? "available" : "taken");
+      } catch {
+        setEmailStatus("idle");
+      }
+    }, 500);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [watchedEmail, user?.email]);
 
   const mutation = useUpdateProfile({
     mutation: {
@@ -57,6 +92,7 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
         const message = data?.error ?? "Failed to update profile";
         if (/email already in use/i.test(message)) {
           form.setError("email", { message });
+          setEmailStatus("taken");
         } else {
           toast.error(message);
         }
@@ -65,6 +101,7 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
   });
 
   const onSubmit = (data: FormValues) => {
+    if (emailStatus === "taken") return;
     const updates: { name?: string; email?: string } = {};
     if (data.name !== user?.name) updates.name = data.name;
     if (data.email !== user?.email) updates.email = data.email;
@@ -74,6 +111,8 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
     }
     mutation.mutate({ data: updates });
   };
+
+  const emailChanged = watchedEmail !== user?.email;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,9 +143,18 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
               autoComplete="email"
               {...form.register("email")}
             />
-            {form.formState.errors.email && (
+            {form.formState.errors.email ? (
               <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
-            )}
+            ) : emailChanged && emailStatus !== "idle" ? (
+              <p className={`text-sm flex items-center gap-1 ${emailStatus === "taken" ? "text-red-500" : emailStatus === "available" ? "text-green-600" : "text-gray-400"}`}>
+                {emailStatus === "checking" && <Loader2 className="h-3 w-3 animate-spin" />}
+                {emailStatus === "available" && <CheckCircle className="h-3 w-3" />}
+                {emailStatus === "taken" && <XCircle className="h-3 w-3" />}
+                {emailStatus === "checking" && "Checking availability…"}
+                {emailStatus === "available" && "Email is available"}
+                {emailStatus === "taken" && "Email is already in use"}
+              </p>
+            ) : null}
           </div>
 
           <div className="pt-2 flex justify-end gap-2">
@@ -118,7 +166,10 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || emailStatus === "taken" || emailStatus === "checking"}
+            >
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save changes
             </Button>

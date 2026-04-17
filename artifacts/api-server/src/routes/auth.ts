@@ -154,6 +154,24 @@ router.get("/auth/me", authenticate, async (req, res): Promise<void> => {
   res.json(userToResponse(user));
 });
 
+router.get("/auth/check-email", authenticate, async (req, res): Promise<void> => {
+  const raw = String(req.query.email ?? "").toLowerCase().trim();
+  if (!raw || !raw.includes("@")) {
+    res.status(400).json({ error: "Missing or invalid email query parameter" });
+    return;
+  }
+  // The caller's own email is always "available" to them.
+  if (raw === req.user!.email.toLowerCase()) {
+    res.json({ available: true });
+    return;
+  }
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, raw));
+  res.json({ available: !existing });
+});
+
 router.patch("/auth/me", authenticate, async (req, res): Promise<void> => {
   const parsed = UpdateProfileBody.safeParse(req.body);
   if (!parsed.success) {
