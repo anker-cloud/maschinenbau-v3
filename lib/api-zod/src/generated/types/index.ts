@@ -7,6 +7,7 @@
  */
 
 export * from "./authResponse";
+export * from "./changePasswordBody";
 export * from "./citation";
 export * from "./conversation";
 export * from "./conversationDetail";
