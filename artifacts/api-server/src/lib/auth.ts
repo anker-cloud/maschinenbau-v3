@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { randomBytes } from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { db, usersTable, sessionsTable } from "@workspace/db";
-import { and, eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
@@ -80,20 +80,54 @@ export interface IssuedSession {
   refreshExpiresAt: Date;
 }
 
+/**
+ * Refresh tokens are formatted "<sessionId>.<secret>" where sessionId is the
+ * UUID PK of the sessions row and secret is a 48-byte random hex value. Only
+ * the secret is bcrypt-hashed in the DB. This lets refresh/revoke perform an
+ * indexed O(1) lookup on the sessions table and a single constant-time
+ * bcrypt.compare against one row, rather than scanning all open sessions.
+ */
+function splitRefreshToken(token: string): { sessionId: string; secret: string } | null {
+  const idx = token.indexOf(".");
+  if (idx <= 0 || idx === token.length - 1) return null;
+  const sessionId = token.slice(0, idx);
+  const secret = token.slice(idx + 1);
+  // sessionId must look like a UUID; sessionsTable.id is uuid type.
+  if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return null;
+  return { sessionId, secret };
+}
+
 export async function createSession(user: AuthUser): Promise<IssuedSession> {
-  const refreshToken = randomBytes(48).toString("hex");
-  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  const secret = randomBytes(48).toString("hex");
+  const refreshTokenHash = await bcrypt.hash(secret, 10);
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
-  await db.insert(sessionsTable).values({
-    userId: user.id,
-    refreshTokenHash,
-    expiresAt,
-  });
+  const [row] = await db
+    .insert(sessionsTable)
+    .values({ userId: user.id, refreshTokenHash, expiresAt })
+    .returning({ id: sessionsTable.id });
   return {
     accessToken: signAccessToken(user),
-    refreshToken,
+    refreshToken: `${row.id}.${secret}`,
     refreshExpiresAt: expiresAt,
   };
+}
+
+async function findValidSession(refreshToken: string) {
+  const parts = splitRefreshToken(refreshToken);
+  if (!parts) return null;
+  const [row] = await db
+    .select()
+    .from(sessionsTable)
+    .where(eq(sessionsTable.id, parts.sessionId));
+  if (!row) return null;
+  if (row.expiresAt.getTime() <= Date.now()) {
+    // Best-effort cleanup of expired row.
+    await db.delete(sessionsTable).where(eq(sessionsTable.id, row.id));
+    return null;
+  }
+  const ok = await bcrypt.compare(parts.secret, row.refreshTokenHash);
+  if (!ok) return null;
+  return row;
 }
 
 export async function rotateSession(refreshToken: string): Promise<{
@@ -101,25 +135,13 @@ export async function rotateSession(refreshToken: string): Promise<{
   session: IssuedSession;
 } | null> {
   if (!refreshToken) return null;
-  // Look up valid sessions; we have to bcrypt-compare since we only store hashes.
-  const candidates = await db
-    .select()
-    .from(sessionsTable)
-    .where(gt(sessionsTable.expiresAt, new Date()));
-  let matched = null;
-  for (const s of candidates) {
-    if (await bcrypt.compare(refreshToken, s.refreshTokenHash)) {
-      matched = s;
-      break;
-    }
-  }
+  const matched = await findValidSession(refreshToken);
   if (!matched) return null;
   const [user] = await db
     .select()
     .from(usersTable)
     .where(eq(usersTable.id, matched.userId));
   if (!user) return null;
-  // Rotate: delete old session, create new one.
   await db.delete(sessionsTable).where(eq(sessionsTable.id, matched.id));
   const authUser: AuthUser = {
     id: user.id,
@@ -136,24 +158,15 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
 }
 
 /**
- * Revoke a single session identified by its raw refresh token. Returns true
- * if a matching session row was deleted. Used by /auth/logout to ensure a
- * leaked or retained refresh token cannot mint new access tokens after
- * logout.
+ * Revoke the single session identified by the raw refresh token. Returns true
+ * if a matching row was deleted.
  */
 export async function revokeRefreshToken(refreshToken: string): Promise<boolean> {
   if (!refreshToken) return false;
-  const candidates = await db
-    .select()
-    .from(sessionsTable)
-    .where(gt(sessionsTable.expiresAt, new Date()));
-  for (const s of candidates) {
-    if (await bcrypt.compare(refreshToken, s.refreshTokenHash)) {
-      await db.delete(sessionsTable).where(eq(sessionsTable.id, s.id));
-      return true;
-    }
-  }
-  return false;
+  const matched = await findValidSession(refreshToken);
+  if (!matched) return false;
+  await db.delete(sessionsTable).where(eq(sessionsTable.id, matched.id));
+  return true;
 }
 
 export function setAuthCookies(
