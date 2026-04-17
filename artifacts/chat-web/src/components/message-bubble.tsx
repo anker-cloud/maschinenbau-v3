@@ -1,10 +1,15 @@
 import { Message, Citation } from "@workspace/api-client-react";
-import { User, FileText, ExternalLink } from "lucide-react";
+import { User, FileText, ExternalLink, Copy, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { Children, cloneElement, isValidElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+
+function citationUrl(citation: Citation): string {
+  return `${import.meta.env.BASE_URL}api/documents/${citation.documentId}/view?page=${citation.pageNumber}`;
+}
 
 function renderCitationsInText(text: string, citations: Citation[]): ReactNode[] {
   if (!citations || citations.length === 0) return [text];
@@ -15,13 +20,14 @@ function renderCitationsInText(text: string, citations: Citation[]): ReactNode[]
       const index = parseInt(match[1], 10) - 1;
       const citation = citations[index];
       if (citation) {
-        const url = `${import.meta.env.BASE_URL}api/documents/${citation.documentId}/view?page=${citation.pageNumber}`;
+        const url = citationUrl(citation);
         return (
           <a
             key={i}
             href={url}
             target="_blank"
             rel="noopener noreferrer"
+            data-citation-num={match[1]}
             className="inline-flex items-center justify-center w-5 h-5 ml-1 text-[10px] font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors align-text-top leading-none no-underline"
             title={`${citation.documentTitle}, Page ${citation.pageNumber}`}
           >
@@ -49,9 +55,85 @@ function withCitations(children: ReactNode, citations: Citation[]): ReactNode {
   });
 }
 
+function buildHtmlForCopy(proseEl: HTMLElement): string {
+  const clone = proseEl.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll<HTMLAnchorElement>("a[data-citation-num]").forEach((a) => {
+    const num = a.getAttribute("data-citation-num") ?? a.textContent ?? "";
+    const href = a.getAttribute("href") ?? "";
+    const absHref = href.startsWith("http") ? href : `${window.location.origin}${href.startsWith("/") ? "" : "/"}${href}`;
+    const replacement = document.createElement("a");
+    replacement.setAttribute("href", absHref);
+    replacement.textContent = `[${num}]`;
+    a.replaceWith(replacement);
+  });
+  clone.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
+    const href = a.getAttribute("href") ?? "";
+    if (href && !href.startsWith("http") && !href.startsWith("mailto:")) {
+      const absHref = `${window.location.origin}${href.startsWith("/") ? "" : "/"}${href}`;
+      a.setAttribute("href", absHref);
+    }
+  });
+  clone.querySelectorAll("*").forEach((el) => {
+    el.removeAttribute("class");
+    el.removeAttribute("style");
+  });
+  return clone.innerHTML;
+}
+
+function buildMarkdownForCopy(content: string, citations: Citation[]): string {
+  let md = content;
+  if (citations.length > 0) {
+    md += "\n\nSources:\n";
+    citations.forEach((c, i) => {
+      const href = citationUrl(c);
+      const absHref = `${window.location.origin}${href.startsWith("/") ? "" : "/"}${href}`;
+      md += `[${i + 1}] ${c.documentTitle}, Page ${c.pageNumber} — ${absHref}\n`;
+    });
+  }
+  return md;
+}
+
 export function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const citations = message.citations ?? [];
+  const proseRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const markdown = buildMarkdownForCopy(message.content, citations);
+    const html = proseRef.current ? buildHtmlForCopy(proseRef.current) : "";
+
+    try {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof window !== "undefined" &&
+        typeof window.ClipboardItem !== "undefined" &&
+        typeof navigator.clipboard.write === "function" &&
+        html
+      ) {
+        const item = new window.ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([markdown], { type: "text/plain" }),
+        });
+        await navigator.clipboard.write([item]);
+      } else {
+        await navigator.clipboard.writeText(markdown);
+      }
+      setCopied(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      try {
+        await navigator.clipboard.writeText(markdown);
+        setCopied(true);
+        toast.success("Copied to clipboard");
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        toast.error("Failed to copy");
+      }
+    }
+  };
 
   return (
     <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -65,7 +147,7 @@ export function MessageBubble({ message }: { message: Message }) {
         </div>
       )}
 
-      <div className={`flex flex-col gap-2 max-w-[85%] ${isUser ? "items-end" : "items-start"}`}>
+      <div className={`group/message flex flex-col gap-2 max-w-[85%] ${isUser ? "items-end" : "items-start"}`}>
         <div
           className={`px-5 py-3.5 rounded-lg text-sm shadow-sm leading-relaxed ${
             isUser
@@ -77,6 +159,7 @@ export function MessageBubble({ message }: { message: Message }) {
             <div className="whitespace-pre-wrap">{message.content}</div>
           ) : (
             <div
+              ref={proseRef}
               className="prose prose-sm max-w-none text-gray-800
                 prose-p:my-2 prose-p:leading-relaxed
                 prose-headings:font-semibold prose-headings:text-gray-900 prose-headings:mt-3 prose-headings:mb-2
@@ -116,6 +199,28 @@ export function MessageBubble({ message }: { message: Message }) {
           )}
         </div>
 
+        {!isUser && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label={copied ? "Copied" : "Copy message"}
+            title={copied ? "Copied" : "Copy message"}
+            className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-800 px-1.5 py-1 -mt-1 rounded hover:bg-gray-100 transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                Copy
+              </>
+            )}
+          </button>
+        )}
+
         {!isUser && message.citations && message.citations.length > 0 && (
           <div className="mt-2 w-full border border-gray-200 rounded-md bg-gray-50/50 overflow-hidden">
             <div className="px-3 py-2 border-b border-gray-200 bg-gray-100/50 flex items-center gap-2 text-xs font-medium text-gray-700">
@@ -124,7 +229,7 @@ export function MessageBubble({ message }: { message: Message }) {
             </div>
             <div className="divide-y divide-gray-100">
               {message.citations.map((citation, idx) => {
-                const url = `${import.meta.env.BASE_URL}api/documents/${citation.documentId}/view?page=${citation.pageNumber}`;
+                const url = citationUrl(citation);
                 return (
                   <div key={idx} className="p-3 text-xs flex items-start gap-3 hover:bg-white transition-colors">
                     <Badge variant="outline" className="shrink-0 bg-white font-mono text-[10px] w-6 h-6 p-0 flex items-center justify-center">
