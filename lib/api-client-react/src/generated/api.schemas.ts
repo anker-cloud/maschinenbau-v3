@@ -74,6 +74,15 @@ export interface CreateUserBody {
   role: CreateUserBodyRole;
 }
 
+/**
+ * Admin update of another user's name and/or email. At least one field must be provided.
+ */
+export interface UpdateUserBody {
+  /** @minLength 1 */
+  name?: string;
+  email?: string;
+}
+
 export interface RequestUploadUrlBody {
   name: string;
   size: number;

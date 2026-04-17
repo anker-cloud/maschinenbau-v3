@@ -283,6 +283,48 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /admin/users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [admin]
+      summary: Update a user's name and/or email (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteUser
       tags: [admin]
@@ -666,6 +708,17 @@ components:
           type: string
           enum: [admin, user]
       required: [email, name, password, role]
+
+    UpdateUserBody:
+      type: object
+      description: Admin update of another user's name and/or email. At least one field must be provided.
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
 
     RequestUploadUrlBody:
       type: object
