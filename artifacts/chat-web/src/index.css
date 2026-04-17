@@ -66,56 +66,60 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE */
+/* DARK THEME — Stürtz brand: near-black bg, cyan accent */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(255,255,255, .08);
+  --badge-outline: rgba(255,255,255, .05);
 
-  --opaque-button-border-intensity: -8;
+  --opaque-button-border-intensity: 8;
 
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(255,255,255, .03);
+  --elevate-2: rgba(255,255,255, .06);
 
-  --background: 0 0% 100%;
-  --foreground: 209 27% 21%;
+  /* Near-black navy background */
+  --background: 222 28% 7%;
+  --foreground: 216 28% 88%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
+  --border: 222 20% 21%;
+  --input: 222 22% 16%;
+  --ring: 192 80% 52%;
 
-  --card: 0 0% 100%;
-  --card-foreground: 209 27% 21%;
-  --card-border: 214 32% 91%;
+  /* Slightly lighter card surfaces */
+  --card: 222 22% 12%;
+  --card-foreground: 216 28% 88%;
+  --card-border: 222 20% 21%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 209 27% 21%;
-  --popover-border: 214 32% 91%;
+  --popover: 222 22% 13%;
+  --popover-foreground: 216 28% 88%;
+  --popover-border: 222 20% 23%;
 
-  --primary: 221 83% 53%;
-  --primary-foreground: 0 0% 100%;
+  /* Cyan primary from the Stürtz logo diamond */
+  --primary: 192 80% 52%;
+  --primary-foreground: 222 28% 6%;
 
-  --secondary: 200 12% 25%;
-  --secondary-foreground: 0 0% 96%;
+  --secondary: 222 20% 22%;
+  --secondary-foreground: 216 28% 80%;
 
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 222 22% 15%;
+  --muted-foreground: 218 15% 52%;
 
-  --accent: 197 68% 59%;
-  --accent-foreground: 0 0% 100%;
+  --accent: 192 65% 45%;
+  --accent-foreground: 222 28% 6%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --sidebar: 210 40% 98%;
-  --sidebar-foreground: 209 27% 21%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 221 83% 53%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 40% 92%;
-  --sidebar-accent-foreground: 209 27% 21%;
-  --sidebar-ring: 221 83% 53%;
+  /* Sidebar slightly darker than main bg */
+  --sidebar: 224 26% 9%;
+  --sidebar-foreground: 216 28% 82%;
+  --sidebar-border: 222 20% 18%;
+  --sidebar-primary: 192 80% 52%;
+  --sidebar-primary-foreground: 222 28% 6%;
+  --sidebar-accent: 222 22% 17%;
+  --sidebar-accent-foreground: 216 28% 80%;
+  --sidebar-ring: 192 80% 52%;
 
-  --chart-1: 221 83% 53%;
+  --chart-1: 192 80% 52%;
   --chart-2: 197 68% 59%;
   --chart-3: 200 12% 25%;
   --chart-4: 43 74% 66%;
@@ -124,13 +128,14 @@
   --app-font-sans: "Inter", "Open Sans", "Arial", sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: "Menlo", monospace;
-  
-  --radius: 0.25rem;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* Softer, more polished corners */
+  --radius: 0.5rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
 
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-accent-border: hsl(var(--sidebar-accent));

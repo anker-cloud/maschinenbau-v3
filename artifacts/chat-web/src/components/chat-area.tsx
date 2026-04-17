@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { 
   useGetConversation,
-  useSendMessage,
   useCreateConversation,
   getGetConversationQueryKey,
   getListConversationsQueryKey,
-  Message
+  Message,
+  Citation,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,51 +16,61 @@ import { Loader2, Send } from "lucide-react";
 import { MessageBubble } from "./message-bubble";
 import { toast } from "sonner";
 
+type StreamEvent =
+  | { type: "user_message"; userMessage: Message }
+  | { type: "delta"; text: string }
+  | { type: "done"; assistantMessage: Message }
+  | { type: "error"; error: string };
+
+async function* readSSE(response: Response): AsyncGenerator<StreamEvent> {
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
+      try {
+        yield JSON.parse(raw) as StreamEvent;
+      } catch {
+        // skip malformed
+      }
+    }
+  }
+}
+
 export function ChatArea({ conversationId }: { conversationId?: string }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   const [input, setInput] = useState("");
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const [streamingCitations, setStreamingCitations] = useState<Citation[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
 
   const { data: conversation, isLoading } = useGetConversation(
-    conversationId || "", 
+    conversationId || "",
     { query: { enabled: !!conversationId } }
   );
 
   const createMutation = useCreateConversation({
     mutation: {
-      onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
-        // After creating, send the first message to this new conversation
-        sendMessageMutation.mutate({
-          id: data.id,
-          data: { content: input }
-        });
-        setInput("");
-        setLocation(`/chat/${data.id}`);
-      },
       onError: () => {
-        setIsTyping(false);
-        setOptimisticMessages([]);
+        setIsStreaming(false);
+        setStreamingContent("");
         toast.error("Failed to create conversation");
-      }
-    }
-  });
-
-  const sendMessageMutation = useSendMessage({
-    mutation: {
-      onSuccess: (data, variables) => {
-        setIsTyping(false);
-        setOptimisticMessages([]);
-        queryClient.invalidateQueries({ queryKey: getGetConversationQueryKey(variables.id) });
-      },
-      onError: () => {
-        setIsTyping(false);
-        setOptimisticMessages([]);
-        toast.error("Failed to send message");
       }
     }
   });
@@ -73,38 +83,85 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [conversation?.messages, optimisticMessages, isTyping]);
+  }, [conversation?.messages, streamingContent, isStreaming]);
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const doStream = useCallback(async (convId: string, content: string) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const url = `${import.meta.env.BASE_URL}api/conversations/${convId}/messages`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream",
+        },
+        body: JSON.stringify({ content }),
+        credentials: "include",
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setIsStreaming(false);
+      setStreamingContent("");
+      toast.error("Failed to send message");
+      return;
+    }
+
+    if (!response.ok) {
+      setIsStreaming(false);
+      setStreamingContent("");
+      toast.error("Failed to send message");
+      return;
+    }
+
+    try {
+      for await (const event of readSSE(response)) {
+        if (event.type === "delta") {
+          setStreamingContent((prev) => prev + event.text);
+        } else if (event.type === "done") {
+          setStreamingCitations(event.assistantMessage.citations ?? []);
+          setIsStreaming(false);
+          setStreamingContent("");
+          setStreamingCitations([]);
+          queryClient.invalidateQueries({ queryKey: getGetConversationQueryKey(convId) });
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setIsStreaming(false);
+      setStreamingContent("");
+      toast.error("Failed to receive response");
+    }
+  }, [queryClient]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isTyping) return;
+    if (!input.trim() || isStreaming || createMutation.isPending) return;
 
     const userMessageContent = input;
-    
-    // Set optimistic UI
-    const tempMessage: Message = {
-      id: "temp-" + Date.now(),
-      role: "user",
-      content: userMessageContent,
-      citations: [],
-      createdAt: new Date().toISOString()
-    };
-    
-    setOptimisticMessages([tempMessage]);
-    setIsTyping(true);
+    setInput("");
+    setIsStreaming(true);
+    setStreamingContent("");
+    setStreamingCitations([]);
 
     if (!conversationId) {
-      // Create new conversation first
-      createMutation.mutate({
-        data: { title: userMessageContent.substring(0, 60) + (userMessageContent.length > 60 ? "..." : "") }
-      });
+      let newConvId: string;
+      try {
+        const conv = await createMutation.mutateAsync({
+          data: { title: userMessageContent.substring(0, 60) + (userMessageContent.length > 60 ? "..." : "") }
+        });
+        newConvId = conv.id;
+        queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+        setLocation(`/chat/${newConvId}`);
+      } catch {
+        return;
+      }
+      await doStream(newConvId, userMessageContent);
     } else {
-      // Send to existing
-      sendMessageMutation.mutate({
-        id: conversationId,
-        data: { content: userMessageContent }
-      });
-      setInput("");
+      await doStream(conversationId, userMessageContent);
     }
   };
 
@@ -115,42 +172,54 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
     }
   };
 
-  const isPending = createMutation.isPending || sendMessageMutation.isPending;
+  const isPending = createMutation.isPending || isStreaming;
 
-  // Determine what messages to show
   const displayMessages = conversation?.messages || [];
-  const allMessages = [...displayMessages, ...optimisticMessages];
+
+  const streamingMessage: Message | null = isStreaming && streamingContent
+    ? {
+        id: "streaming",
+        role: "assistant",
+        content: streamingContent,
+        citations: streamingCitations,
+        createdAt: new Date().toISOString(),
+      }
+    : null;
 
   return (
-    <div className="flex flex-col h-full bg-white relative">
+    <div className="flex flex-col h-full bg-background relative">
       {isLoading && conversationId ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : !conversationId && allMessages.length === 0 ? (
+      ) : !conversationId && displayMessages.length === 0 && !isStreaming ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-            <img src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg" className="h-8 opacity-50 grayscale" alt="Logo" />
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-primary/20">
+            <img src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg" className="h-8 opacity-60 brightness-0 invert" alt="Logo" />
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">Sturtz Technical Support</h2>
-          <p className="text-gray-500 max-w-md mt-2 leading-relaxed">
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight">Sturtz Technical Support</h2>
+          <p className="text-muted-foreground max-w-md mt-2 leading-relaxed">
             Ask questions about machinery, maintenance procedures, or parts manuals. The assistant will provide citations to specific document pages.
           </p>
         </div>
       ) : (
         <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={scrollRef}>
           <div className="max-w-3xl mx-auto space-y-6 pb-6">
-            {allMessages.map((msg) => (
+            {displayMessages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}
-            
-            {isTyping && (
+
+            {streamingMessage && (
+              <MessageBubble message={streamingMessage} isStreaming />
+            )}
+
+            {isStreaming && !streamingContent && (
               <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-sm bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
-                  <img src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg" alt="Sturtz" className="h-3 grayscale" />
+                <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0">
+                  <img src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg" alt="Sturtz" className="h-3 brightness-0 invert opacity-70" />
                 </div>
-                <div className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 text-gray-500 text-sm flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="bg-card border border-border rounded-lg px-4 py-3 text-muted-foreground text-sm flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   Assistant is thinking...
                 </div>
               </div>
@@ -159,27 +228,27 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
         </ScrollArea>
       )}
 
-      <div className="p-4 bg-white border-t border-border/50">
+      <div className="p-4 bg-background border-t border-border">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto relative">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a technical question..."
-            className="min-h-[60px] max-h-[200px] pr-12 resize-none bg-gray-50 border-gray-200 focus-visible:ring-primary shadow-sm"
+            className="min-h-[60px] max-h-[200px] pr-12 resize-none bg-card border-border focus-visible:ring-primary shadow-sm"
             disabled={isPending}
           />
           <Button 
             type="submit" 
             size="icon" 
             disabled={!input.trim() || isPending}
-            className="absolute bottom-3 right-3 h-8 w-8 rounded-sm bg-primary hover:bg-blue-600 shadow-sm"
+            className="absolute bottom-3 right-3 h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 shadow-sm"
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
         <div className="text-center mt-2">
-          <span className="text-[10px] text-gray-400">Information generated may be inaccurate. Verify with official documentation.</span>
+          <span className="text-[10px] text-muted-foreground/60">Information generated may be inaccurate. Verify with official documentation.</span>
         </div>
       </div>
     </div>

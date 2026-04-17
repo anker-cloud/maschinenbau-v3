@@ -133,15 +133,15 @@ export function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div className="flex justify-between items-center bg-card p-4 rounded-xl border border-border shadow-sm">
         <div>
-          <h2 className="text-lg font-medium text-gray-900">User Management</h2>
-          <p className="text-sm text-gray-500">Manage access to the technical support portal.</p>
+          <h2 className="text-lg font-medium text-foreground">User Management</h2>
+          <p className="text-sm text-muted-foreground">Manage access to the technical support portal.</p>
         </div>
         
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-blue-600">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <UserPlus className="h-4 w-4 mr-2" />
               Add User
             </Button>
@@ -155,7 +155,7 @@ export function UsersTab() {
                 <Label htmlFor="create-name">Full Name</Label>
                 <Input id="create-name" {...createForm.register("name")} placeholder="John Doe" />
                 {createForm.formState.errors.name && (
-                  <p className="text-sm text-red-500">{createForm.formState.errors.name.message}</p>
+                  <p className="text-sm text-destructive">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
               
@@ -163,7 +163,7 @@ export function UsersTab() {
                 <Label htmlFor="create-email">Email</Label>
                 <Input id="create-email" type="email" {...createForm.register("email")} placeholder="john@stuertz.com" />
                 {createForm.formState.errors.email && (
-                  <p className="text-sm text-red-500">{createForm.formState.errors.email.message}</p>
+                  <p className="text-sm text-destructive">{createForm.formState.errors.email.message}</p>
                 )}
               </div>
               
@@ -171,7 +171,7 @@ export function UsersTab() {
                 <Label htmlFor="create-password">Password</Label>
                 <Input id="create-password" type="password" {...createForm.register("password")} />
                 {createForm.formState.errors.password && (
-                  <p className="text-sm text-red-500">{createForm.formState.errors.password.message}</p>
+                  <p className="text-sm text-destructive">{createForm.formState.errors.password.message}</p>
                 )}
               </div>
               
@@ -190,7 +190,7 @@ export function UsersTab() {
                   </SelectContent>
                 </Select>
                 {createForm.formState.errors.role && (
-                  <p className="text-sm text-red-500">{createForm.formState.errors.role.message}</p>
+                  <p className="text-sm text-destructive">{createForm.formState.errors.role.message}</p>
                 )}
               </div>
               
@@ -205,7 +205,6 @@ export function UsersTab() {
         </Dialog>
       </div>
 
-      {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -216,7 +215,7 @@ export function UsersTab() {
               <Label htmlFor="edit-name">Full Name</Label>
               <Input id="edit-name" {...editForm.register("name")} placeholder="John Doe" />
               {editForm.formState.errors.name && (
-                <p className="text-sm text-red-500">{editForm.formState.errors.name.message}</p>
+                <p className="text-sm text-destructive">{editForm.formState.errors.name.message}</p>
               )}
             </div>
 
@@ -224,7 +223,7 @@ export function UsersTab() {
               <Label htmlFor="edit-email">Email</Label>
               <Input id="edit-email" type="email" {...editForm.register("email")} placeholder="john@stuertz.com" />
               {editForm.formState.errors.email && (
-                <p className="text-sm text-red-500">{editForm.formState.errors.email.message}</p>
+                <p className="text-sm text-destructive">{editForm.formState.errors.email.message}</p>
               )}
             </div>
 
@@ -241,9 +240,9 @@ export function UsersTab() {
         </DialogContent>
       </Dialog>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 text-gray-700 font-medium border-b border-gray-200">
+          <thead className="bg-muted text-muted-foreground font-medium border-b border-border">
             <tr>
               <th className="px-6 py-3">Name</th>
               <th className="px-6 py-3">Email</th>
@@ -252,19 +251,19 @@ export function UsersTab() {
               <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {users?.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
-                <td className="px-6 py-4 text-gray-500">{user.email}</td>
+              <tr key={user.id} className="hover:bg-muted/40 transition-colors">
+                <td className="px-6 py-4 font-medium text-foreground">{user.name}</td>
+                <td className="px-6 py-4 text-muted-foreground">{user.email}</td>
                 <td className="px-6 py-4">
                   {user.role === "admin" ? (
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100">Admin</Badge>
+                    <Badge variant="secondary" className="bg-primary/20 text-primary hover:bg-primary/20">Admin</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-gray-600">User</Badge>
+                    <Badge variant="outline" className="text-muted-foreground">User</Badge>
                   )}
                 </td>
-                <td className="px-6 py-4 text-gray-500">
+                <td className="px-6 py-4 text-muted-foreground">
                   {format(new Date(user.createdAt), "MMM d, yyyy")}
                 </td>
                 <td className="px-6 py-4 text-right">
@@ -272,7 +271,7 @@ export function UsersTab() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-gray-400 hover:text-primary hover:bg-blue-50"
+                      className="text-muted-foreground hover:text-primary hover:bg-primary/10"
                       title="Edit user"
                       onClick={() => openEditDialog({ id: user.id, name: user.name, email: user.email })}
                     >
@@ -281,7 +280,7 @@ export function UsersTab() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       title="Delete user"
                       onClick={() => handleDelete(user.id)}
                       disabled={user.id === currentUser?.id || deleteMutation.isPending}
@@ -294,7 +293,7 @@ export function UsersTab() {
             ))}
             {(!users || users.length === 0) && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                   No users found
                 </td>
               </tr>

@@ -42,7 +42,7 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
       <div className="p-4 border-b border-border">
         <Button 
           onClick={handleNewChat} 
-          className="w-full justify-start gap-2 h-10 bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 hover:text-primary shadow-sm"
+          className="w-full justify-start gap-2 h-10 bg-muted text-foreground border border-border hover:bg-primary/10 hover:text-primary hover:border-primary/30 shadow-sm transition-colors"
           variant="outline"
         >
           <Plus className="h-4 w-4" />
@@ -64,10 +64,10 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
             conversations?.map((conv) => (
               <div 
                 key={conv.id}
-                className={`group flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
+                className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
                   activeId === conv.id 
-                    ? "bg-blue-50 text-primary" 
-                    : "hover:bg-gray-100 text-gray-700"
+                    ? "bg-primary/15 text-primary" 
+                    : "hover:bg-muted text-sidebar-foreground"
                 }`}
                 onClick={() => {
                   setLocation(`/chat/${conv.id}`);
@@ -75,10 +75,10 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
                 }}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <MessageSquare className={`h-4 w-4 shrink-0 ${activeId === conv.id ? "text-primary" : "text-gray-400"}`} />
+                  <MessageSquare className={`h-4 w-4 shrink-0 ${activeId === conv.id ? "text-primary" : "text-muted-foreground"}`} />
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-sm font-medium truncate">{conv.title || "New Chat"}</span>
-                    <span className="text-[10px] text-gray-400 truncate">
+                    <span className="text-[10px] text-muted-foreground truncate">
                       {formatDistanceToNow(new Date(conv.createdAt), { addSuffix: true })}
                     </span>
                   </div>
@@ -87,7 +87,7 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-7 w-7 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity ${deleteMutation.isPending && deleteMutation.variables?.id === conv.id ? "opacity-100" : ""}`}
+                  className={`h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity ${deleteMutation.isPending && deleteMutation.variables?.id === conv.id ? "opacity-100" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (confirm("Delete this conversation?")) {
