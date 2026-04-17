@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearch } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersTab } from "@/components/admin/users-tab";
 import { DocumentsTab } from "@/components/admin/documents-tab";
@@ -12,12 +12,14 @@ function isValidTab(v: string | null): v is TabValue {
 }
 
 export default function AdminDashboard() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get("tab");
+  const [location, navigate] = useLocation();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const tabParam = params.get("tab");
   const activeTab: TabValue = isValidTab(tabParam) ? tabParam : "users";
 
   function handleTabChange(value: string) {
-    setSearchParams({ tab: value }, { replace: true });
+    navigate(`${location}?tab=${value}`, { replace: true });
   }
 
   return (
