@@ -55,27 +55,41 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!watchedEmail || !watchedEmail.includes("@")) {
+    const normalizedCurrent = (user?.email ?? "").toLowerCase().trim();
+    const normalizedWatched = (watchedEmail ?? "").toLowerCase().trim();
+
+    if (!normalizedWatched || !normalizedWatched.includes("@")) {
       setEmailStatus("idle");
       return;
     }
 
-    if (watchedEmail === user?.email) {
+    if (normalizedWatched === normalizedCurrent) {
       setEmailStatus("idle");
       return;
     }
 
     setEmailStatus("checking");
+
+    const controller = new AbortController();
+
     debounceRef.current = setTimeout(async () => {
       try {
-        const result = await checkEmailAvailability({ email: watchedEmail });
-        setEmailStatus(result.available ? "available" : "taken");
-      } catch {
-        setEmailStatus("idle");
+        const result = await checkEmailAvailability(
+          { email: normalizedWatched },
+          { signal: controller.signal },
+        );
+        if (!controller.signal.aborted) {
+          setEmailStatus(result.available ? "available" : "taken");
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setEmailStatus("idle");
+        }
       }
     }, 500);
 
     return () => {
+      controller.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [watchedEmail, user?.email]);
