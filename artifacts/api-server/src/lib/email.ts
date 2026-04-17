@@ -121,7 +121,8 @@ export async function sendIngestionFailureAlert(doc: FailedDocInfo): Promise<voi
     const transport = makeTransport();
     await transport.sendMail({
       from: fromAddress,
-      to: adminEmails.join(", "),
+      to: fromAddress,
+      bcc: adminEmails.join(", "),
       subject: `[Sturtz Support] Indexing failed: ${doc.title}`,
       text,
       html,
