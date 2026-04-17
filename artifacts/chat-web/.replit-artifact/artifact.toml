@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Sturtz Support Chat"
+version = "1.0.0"
+id = "artifacts/chat-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22950
+
+[services.development]
+run = "pnpm --filter @workspace/chat-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/chat-web", "run", "build" ]
+publicDir = "artifacts/chat-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22950"
+BASE_PATH = "/"
