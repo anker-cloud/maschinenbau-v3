@@ -41,6 +41,16 @@ Internal support chatbot that answers technical questions from machinery/part ma
 - Seed admin: `admin@sturtz.com` / `changeme123` (override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
 - `JWT_SECRET` should be set as a secret in production.
 
+### Email alerts
+When a document fails to index, all admin users are emailed automatically.
+Email sending requires these env vars (feature is silently skipped if not set):
+- `SMTP_HOST` — SMTP server hostname (e.g. `smtp.gmail.com`)
+- `SMTP_USER` — SMTP auth username
+- `SMTP_PASS` — SMTP auth password (store as a secret)
+- `SMTP_PORT` — optional, default `587`
+- `SMTP_FROM` — optional From address, defaults to `SMTP_USER`
+- `APP_URL` — optional public URL used for the "Go to Admin" link in the alert email
+
 ### Storage
 - Uploaded documents go directly to GCS via presigned URL (`POST /api/storage/uploads/request-url`).
 - Admin then registers the document via `POST /api/admin/documents`, which queues ingestion with the RAG service.
