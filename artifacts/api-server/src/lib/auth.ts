@@ -135,6 +135,27 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
   await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
 }
 
+/**
+ * Revoke a single session identified by its raw refresh token. Returns true
+ * if a matching session row was deleted. Used by /auth/logout to ensure a
+ * leaked or retained refresh token cannot mint new access tokens after
+ * logout.
+ */
+export async function revokeRefreshToken(refreshToken: string): Promise<boolean> {
+  if (!refreshToken) return false;
+  const candidates = await db
+    .select()
+    .from(sessionsTable)
+    .where(gt(sessionsTable.expiresAt, new Date()));
+  for (const s of candidates) {
+    if (await bcrypt.compare(refreshToken, s.refreshTokenHash)) {
+      await db.delete(sessionsTable).where(eq(sessionsTable.id, s.id));
+      return true;
+    }
+  }
+  return false;
+}
+
 export function setAuthCookies(
   res: Response,
   accessToken: string,

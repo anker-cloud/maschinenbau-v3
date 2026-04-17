@@ -39,7 +39,7 @@ paths:
     post:
       operationId: register
       tags: [auth]
-      summary: Self-service signup (creates a 'user' role account)
+      summary: Admin-only account creation (creates a 'user' role account)
       requestBody:
         required: true
         content:

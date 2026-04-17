@@ -124,7 +124,7 @@ export function useHealthCheck<
 }
 
 /**
- * @summary Self-service signup (creates a 'user' role account)
+ * @summary Admin-only account creation (creates a 'user' role account)
  */
 export const getRegisterUrl = () => {
   return `/api/auth/register`;
@@ -187,7 +187,7 @@ export type RegisterMutationBody = BodyType<RegisterBody>;
 export type RegisterMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Self-service signup (creates a 'user' role account)
+ * @summary Admin-only account creation (creates a 'user' role account)
  */
 export const useRegister = <
   TError = ErrorType<ErrorResponse>,

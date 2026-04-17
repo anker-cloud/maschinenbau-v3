@@ -8,6 +8,8 @@ import {
   createSession,
   getRefreshTokenFromRequest,
   hashPassword,
+  requireAdmin,
+  revokeRefreshToken,
   rotateSession,
   setAuthCookies,
   verifyPassword,
@@ -26,7 +28,11 @@ function userToResponse(u: { id: string; email: string; name: string; role: stri
   };
 }
 
-router.post("/auth/register", async (req, res): Promise<void> => {
+// Admin-only account creation. Per product requirements, all account
+// provisioning is gated to admins; there is no public self-signup. The
+// /admin/users endpoint is the canonical UI surface; this route exists for
+// API parity and matches the OpenAPI contract.
+router.post("/auth/register", authenticate, requireAdmin, async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -47,17 +53,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .insert(usersTable)
     .values({ email, name: parsed.data.name, passwordHash, role: "user" })
     .returning();
-  const authUser: AuthUser = {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role as "admin" | "user",
-  };
-  const session = await createSession(authUser);
-  setAuthCookies(res, session.accessToken, session.refreshToken, session.refreshExpiresAt);
+  // Admin-created accounts do not get an active session — the new user must
+  // log in themselves. We still return an AuthResponse-shaped payload for
+  // contract compatibility, with empty token/refreshToken strings.
   res.status(201).json({
-    token: session.accessToken,
-    refreshToken: session.refreshToken,
+    token: "",
+    refreshToken: "",
     user: userToResponse(user),
   });
 });
@@ -122,7 +123,11 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
   });
 });
 
-router.post("/auth/logout", (_req, res): void => {
+router.post("/auth/logout", async (req, res): Promise<void> => {
+  const refreshToken = getRefreshTokenFromRequest(req);
+  if (refreshToken) {
+    await revokeRefreshToken(refreshToken);
+  }
   clearAuthCookies(res);
   res.status(204).end();
 });
