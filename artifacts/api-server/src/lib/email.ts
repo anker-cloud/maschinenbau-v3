@@ -16,6 +16,10 @@
  *   APP_URL     — Public app URL used for links in alert emails
  *                 (e.g. https://my-app.replit.app). Falls back to
  *                 REPLIT_DEV_DOMAIN if set, then to a placeholder.
+ *
+ * Feature flag:
+ *   ENABLE_INGESTION_FAILURE_ALERTS — set to "false" to disable alert
+ *     emails even when SMTP is fully configured. Defaults to enabled.
  */
 import nodemailer from "nodemailer";
 import { eq } from "drizzle-orm";
@@ -24,7 +28,8 @@ import { logger } from "./logger";
 
 const log = logger.child({ module: "email" });
 
-function smtpEnabled(): boolean {
+function alertsEnabled(): boolean {
+  if (process.env.ENABLE_INGESTION_FAILURE_ALERTS === "false") return false;
   return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
@@ -55,8 +60,8 @@ interface FailedDocInfo {
 
 /** Send an ingestion-failure alert to all admin users. Fire-and-forget safe. */
 export async function sendIngestionFailureAlert(doc: FailedDocInfo): Promise<void> {
-  if (!smtpEnabled()) {
-    log.info({ documentId: doc.id }, "SMTP not configured — skipping ingestion failure alert");
+  if (!alertsEnabled()) {
+    log.info({ documentId: doc.id }, "Ingestion failure alerts disabled or SMTP not configured — skipping");
     return;
   }
 
@@ -78,7 +83,7 @@ export async function sendIngestionFailureAlert(doc: FailedDocInfo): Promise<voi
   }
 
   const fromAddress = process.env.SMTP_FROM ?? process.env.SMTP_USER!;
-  const adminLink = `${appUrl()}/admin`;
+  const adminLink = `${appUrl()}/admin?tab=documents`;
   const uploadedAt = doc.createdAt.toUTCString();
 
   const html = `

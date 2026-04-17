@@ -49,7 +49,8 @@ Email sending requires these env vars (feature is silently skipped if not set):
 - `SMTP_PASS` — SMTP auth password (store as a secret)
 - `SMTP_PORT` — optional, default `587`
 - `SMTP_FROM` — optional From address, defaults to `SMTP_USER`
-- `APP_URL` — optional public URL used for the "Go to Admin" link in the alert email
+- `APP_URL` — optional public URL used for the "Go to Admin Documents" link in the alert email
+- `ENABLE_INGESTION_FAILURE_ALERTS` — set to `"false"` to disable alert emails while keeping SMTP configured
 
 ### Storage
 - Uploaded documents go directly to GCS via presigned URL (`POST /api/storage/uploads/request-url`).
