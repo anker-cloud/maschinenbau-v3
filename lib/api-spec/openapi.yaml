@@ -155,6 +155,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update the current user's name and/or email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /auth/change-password:
     post:
@@ -602,6 +637,15 @@ components:
         newPassword:
           type: string
       required: [currentPassword, newPassword]
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+      minProperties: 1
 
     RefreshBody:
       type: object

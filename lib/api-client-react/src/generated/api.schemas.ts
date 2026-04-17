@@ -50,6 +50,11 @@ export interface ChangePasswordBody {
   newPassword: string;
 }
 
+export interface UpdateProfileBody {
+  name?: string;
+  email?: string;
+}
+
 export interface RefreshBody {
   refreshToken?: string;
 }

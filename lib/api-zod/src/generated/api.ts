@@ -75,6 +75,22 @@ export const GetCurrentUserResponse = zod.object({
 });
 
 /**
+ * @summary Update the current user's name and/or email
+ */
+export const UpdateProfileBody = zod.object({
+  name: zod.string().optional(),
+  email: zod.string().optional(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  id: zod.string().uuid(),
+  email: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "user"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * Verifies the current password, updates the bcrypt hash, and invalidates
 all existing sessions for the user. A fresh session is issued for the
 caller so they remain logged in.

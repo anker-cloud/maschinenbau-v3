@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { ChangePasswordBody, LoginBody, RegisterBody } from "@workspace/api-zod";
+import { ChangePasswordBody, LoginBody, RegisterBody, UpdateProfileBody } from "@workspace/api-zod";
 import {
   authenticate,
   clearAuthCookies,
@@ -152,6 +152,63 @@ router.get("/auth/me", authenticate, async (req, res): Promise<void> => {
     return;
   }
   res.json(userToResponse(user));
+});
+
+router.patch("/auth/me", authenticate, async (req, res): Promise<void> => {
+  const parsed = UpdateProfileBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  const { name, email } = parsed.data;
+  if (!name && !email) {
+    res.status(400).json({ error: "At least one field (name or email) is required" });
+    return;
+  }
+  const updates: Partial<{ name: string; email: string }> = {};
+  if (name !== undefined) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      res.status(400).json({ error: "Name cannot be blank" });
+      return;
+    }
+    updates.name = trimmedName;
+  }
+  if (email !== undefined) {
+    const trimmedEmail = email.toLowerCase().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      res.status(400).json({ error: "Invalid email address" });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, trimmedEmail));
+    if (existing && existing.id !== req.user!.id) {
+      res.status(409).json({ error: "Email already in use" });
+      return;
+    }
+    updates.email = trimmedEmail;
+  }
+  try {
+    const [updated] = await db
+      .update(usersTable)
+      .set(updates)
+      .where(eq(usersTable.id, req.user!.id))
+      .returning();
+    if (!updated) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    res.json(userToResponse(updated));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/unique.*email|duplicate.*email/i.test(msg)) {
+      res.status(409).json({ error: "Email already in use" });
+    } else {
+      throw err;
+    }
+  }
 });
 
 router.post("/auth/change-password", authenticate, async (req, res): Promise<void> => {

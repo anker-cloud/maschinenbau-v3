@@ -4,7 +4,7 @@ import { useLogout, getGetCurrentUserQueryKey } from "@workspace/api-client-reac
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { KeyRound, LogOut, Settings, User as UserIcon } from "lucide-react";
+import { KeyRound, LogOut, Pencil, Settings, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -14,12 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const logoutMutation = useLogout({
     mutation: {
@@ -75,6 +77,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
+                data-testid="edit-profile-menu-item"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setEditProfileOpen(true);
+                }}
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 data-testid="change-password-menu-item"
                 onSelect={(event) => {
                   event.preventDefault();
@@ -107,6 +119,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       <ChangePasswordDialog
         open={changePasswordOpen}
         onOpenChange={setChangePasswordOpen}
+      />
+      <EditProfileDialog
+        open={editProfileOpen}
+        onOpenChange={setEditProfileOpen}
       />
     </div>
   );
