@@ -110,6 +110,15 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Invalid refresh token" });
     return;
   }
+  const [dbUser] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, result.user.id));
+  if (!dbUser) {
+    clearAuthCookies(res);
+    res.status(401).json({ error: "Invalid refresh token" });
+    return;
+  }
   setAuthCookies(
     res,
     result.session.accessToken,
@@ -119,7 +128,7 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
   res.json({
     token: result.session.accessToken,
     refreshToken: result.session.refreshToken,
-    user: { ...result.user, createdAt: new Date() },
+    user: userToResponse(dbUser),
   });
 });
 

@@ -48,13 +48,25 @@ paths:
               $ref: "#/components/schemas/RegisterBody"
       responses:
         "201":
-          description: Account created and logged in
+          description: Account created. token/refreshToken are empty strings — the new user must log in with /auth/login.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized (admin required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (admin required)
           content:
             application/json:
               schema:
