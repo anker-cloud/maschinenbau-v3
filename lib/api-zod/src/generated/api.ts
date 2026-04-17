@@ -137,6 +137,30 @@ export const CreateUserBody = zod.object({
 });
 
 /**
+ * @summary Update a user's name and/or email (admin only)
+ */
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateUserBody = zod
+  .object({
+    name: zod.string().min(1).optional(),
+    email: zod.string().email().optional(),
+  })
+  .describe(
+    "Admin update of another user's name and\/or email. At least one field must be provided.",
+  );
+
+export const UpdateUserResponse = zod.object({
+  id: zod.string().uuid(),
+  email: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["admin", "user"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary Delete a user (admin only)
  */
 export const DeleteUserParams = zod.object({

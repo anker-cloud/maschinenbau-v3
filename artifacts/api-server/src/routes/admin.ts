@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, ne } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { CreateUserBody } from "@workspace/api-zod";
+import { CreateUserBody, UpdateUserBody } from "@workspace/api-zod";
 import { authenticate, requireAdmin, hashPassword } from "../lib/auth";
 import { parseUuidParam } from "../lib/validation";
 
@@ -56,6 +56,55 @@ router.post("/admin/users", async (req, res): Promise<void> => {
     role: user.role,
     createdAt: user.createdAt,
   });
+});
+
+router.patch("/admin/users/:id", async (req, res): Promise<void> => {
+  const id = parseUuidParam(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const parsed = UpdateUserBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { name, email } = parsed.data;
+  if (!name && !email) {
+    res.status(400).json({ error: "At least one of name or email must be provided" });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (name) updates.name = name.trim();
+  if (email) {
+    const normalizedEmail = email.toLowerCase().trim();
+    // Check for duplicate email — exclude the user being edited
+    const [conflict] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(and(eq(usersTable.email, normalizedEmail), ne(usersTable.id, id)));
+    if (conflict) {
+      res.status(409).json({ error: "A user with this email already exists" });
+      return;
+    }
+    updates.email = normalizedEmail;
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set(updates)
+    .where(eq(usersTable.id, id))
+    .returning({
+      id: usersTable.id,
+      email: usersTable.email,
+      name: usersTable.name,
+      role: usersTable.role,
+      createdAt: usersTable.createdAt,
+    });
+  if (!updated) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json(updated);
 });
 
 router.delete("/admin/users/:id", async (req, res): Promise<void> => {
