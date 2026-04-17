@@ -30,7 +30,7 @@ function renderCitationsInText(text: string, citations: Citation[]): ReactNode[]
             target="_blank"
             rel="noopener noreferrer"
             data-citation-num={match[1]}
-            className="inline-flex items-center justify-center w-5 h-5 ml-1 text-[10px] font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors align-text-top leading-none no-underline"
+            className="inline-flex items-center justify-center w-5 h-5 ml-1 text-[10px] font-medium bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors align-text-top leading-none no-underline"
             title={`${citation.documentTitle}, Page ${citation.pageNumber}`}
           >
             {match[1]}
@@ -95,7 +95,7 @@ function buildMarkdownForCopy(content: string, citations: Citation[]): string {
   return md;
 }
 
-export function MessageBubble({ message }: { message: Message }) {
+export function MessageBubble({ message, isStreaming }: { message: Message; isStreaming?: boolean }) {
   const isUser = message.role === "user";
   const citations = message.citations ?? [];
   const proseRef = useRef<HTMLDivElement>(null);
@@ -140,21 +140,21 @@ export function MessageBubble({ message }: { message: Message }) {
   return (
     <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <div className="w-8 h-8 rounded-sm bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0 mt-1">
+        <div className="w-8 h-8 rounded-lg bg-card border border-border shadow-sm flex items-center justify-center shrink-0 mt-1">
           <img
             src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg"
             alt="Sturtz"
-            className="h-3 object-contain"
+            className="h-3 object-contain brightness-0 invert opacity-80"
           />
         </div>
       )}
 
       <div className={`group/message flex flex-col gap-2 max-w-[85%] ${isUser ? "items-end" : "items-start"}`}>
         <div
-          className={`px-5 py-3.5 rounded-lg text-sm shadow-sm leading-relaxed ${
+          className={`px-5 py-3.5 rounded-xl text-sm shadow-sm leading-relaxed ${
             isUser
               ? "bg-primary text-primary-foreground font-medium"
-              : "bg-white border border-gray-200 text-gray-800"
+              : "bg-card border border-border text-foreground"
           }`}
         >
           {isUser ? (
@@ -162,18 +162,18 @@ export function MessageBubble({ message }: { message: Message }) {
           ) : (
             <div
               ref={proseRef}
-              className="prose prose-sm max-w-none text-gray-800
+              className="prose prose-sm max-w-none text-foreground
                 prose-p:my-2 prose-p:leading-relaxed
-                prose-headings:font-semibold prose-headings:text-gray-900 prose-headings:mt-3 prose-headings:mb-2
+                prose-headings:font-semibold prose-headings:text-foreground prose-headings:mt-3 prose-headings:mb-2
                 prose-h1:text-base prose-h2:text-base prose-h3:text-sm prose-h4:text-sm
                 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5
-                prose-strong:text-gray-900 prose-strong:font-semibold
-                prose-code:text-[0.85em] prose-code:bg-gray-100 prose-code:text-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
-                prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded prose-pre:my-2 prose-pre:p-3 prose-pre:text-xs
+                prose-strong:text-foreground prose-strong:font-semibold
+                prose-code:text-[0.85em] prose-code:bg-muted prose-code:text-foreground prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
+                prose-pre:bg-[#0f172a] prose-pre:text-gray-100 prose-pre:rounded-lg prose-pre:my-2 prose-pre:p-3 prose-pre:text-xs
                 prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                prose-table:my-2 prose-table:text-xs prose-th:border prose-th:border-gray-200 prose-th:bg-gray-50 prose-th:px-2 prose-th:py-1 prose-th:text-left
-                prose-td:border prose-td:border-gray-200 prose-td:px-2 prose-td:py-1
-                prose-blockquote:border-l-2 prose-blockquote:border-gray-200 prose-blockquote:pl-3 prose-blockquote:italic prose-blockquote:text-gray-600 prose-blockquote:my-2
+                prose-table:my-2 prose-table:text-xs prose-th:border prose-th:border-border prose-th:bg-muted prose-th:px-2 prose-th:py-1 prose-th:text-left
+                prose-td:border prose-td:border-border prose-td:px-2 prose-td:py-1
+                prose-blockquote:border-l-2 prose-blockquote:border-primary/40 prose-blockquote:pl-3 prose-blockquote:italic prose-blockquote:text-muted-foreground prose-blockquote:my-2
                 first:[&>*]:mt-0 last:[&>*]:mb-0"
             >
               <ReactMarkdown
@@ -206,7 +206,7 @@ export function MessageBubble({ message }: { message: Message }) {
                           customStyle={{
                             margin: "0.5rem 0",
                             padding: "0.75rem",
-                            borderRadius: "0.375rem",
+                            borderRadius: "0.5rem",
                             fontSize: "0.75rem",
                             background: "#0f172a",
                           }}
@@ -228,17 +228,20 @@ export function MessageBubble({ message }: { message: Message }) {
               >
                 {message.content}
               </ReactMarkdown>
+              {isStreaming && (
+                <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
+              )}
             </div>
           )}
         </div>
 
-        {!isUser && (
+        {!isUser && !isStreaming && (
           <button
             type="button"
             onClick={handleCopy}
             aria-label={copied ? "Copied" : "Copy message"}
             title={copied ? "Copied" : "Copy message"}
-            className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-800 px-1.5 py-1 -mt-1 rounded hover:bg-gray-100 transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 -mt-1 rounded-lg hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
           >
             {copied ? (
               <>
@@ -255,28 +258,28 @@ export function MessageBubble({ message }: { message: Message }) {
         )}
 
         {!isUser && message.citations && message.citations.length > 0 && (
-          <div className="mt-2 w-full border border-gray-200 rounded-md bg-gray-50/50 overflow-hidden">
-            <div className="px-3 py-2 border-b border-gray-200 bg-gray-100/50 flex items-center gap-2 text-xs font-medium text-gray-700">
+          <div className="mt-2 w-full border border-border rounded-xl bg-muted/30 overflow-hidden">
+            <div className="px-3 py-2 border-b border-border bg-muted/50 flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <FileText className="h-3 w-3" />
               Sources
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               {message.citations.map((citation, idx) => {
                 const url = citationUrl(citation);
                 return (
-                  <div key={idx} className="p-3 text-xs flex items-start gap-3 hover:bg-white transition-colors">
-                    <Badge variant="outline" className="shrink-0 bg-white font-mono text-[10px] w-6 h-6 p-0 flex items-center justify-center">
+                  <div key={idx} className="p-3 text-xs flex items-start gap-3 hover:bg-muted/40 transition-colors">
+                    <Badge variant="outline" className="shrink-0 bg-card border-border font-mono text-[10px] w-6 h-6 p-0 flex items-center justify-center text-primary">
                       {idx + 1}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">
+                      <div className="font-medium text-foreground truncate">
                         {citation.documentTitle}
                       </div>
-                      <div className="text-gray-500 mt-0.5">
+                      <div className="text-muted-foreground mt-0.5">
                         Page {citation.pageNumber}
                       </div>
                       {citation.snippet && (
-                        <div className="text-gray-500 mt-1.5 italic border-l-2 border-gray-200 pl-2 line-clamp-2 text-[11px]">
+                        <div className="text-muted-foreground mt-1.5 italic border-l-2 border-primary/30 pl-2 line-clamp-2 text-[11px]">
                           "{citation.snippet}"
                         </div>
                       )}
@@ -285,7 +288,7 @@ export function MessageBubble({ message }: { message: Message }) {
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 inline-flex items-center gap-1 text-primary hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                      className="shrink-0 inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-lg transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
                       View
@@ -299,7 +302,7 @@ export function MessageBubble({ message }: { message: Message }) {
       </div>
 
       {isUser && (
-        <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center shrink-0 mt-1 border border-blue-200">
+        <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-1 border border-primary/25">
           <User className="h-4 w-4" />
         </div>
       )}

@@ -31,18 +31,18 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-xl shadow-lg border border-border">
         <div className="flex flex-col items-center justify-center text-center">
           <img 
             src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg" 
             alt="Sturtz Logo" 
-            className="h-12 mb-6"
+            className="h-12 mb-6 brightness-0 invert"
           />
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight">
             Technical Support Portal
           </h2>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Sign in to access documentation and technical assistance
           </p>
         </div>
