@@ -64,6 +64,10 @@ externalPort = 3002
 localPort = 22950
 externalPort = 3001
 
+[[ports]]
+localPort = 22951
+externalPort = 3003
+
 [nix]
 channel = "stable-25_05"
 packages = ["freetype", "glibcLocales", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "libxcrypt", "libyaml", "mupdf", "openjpeg", "postgresql", "swig", "xcbuild"]
