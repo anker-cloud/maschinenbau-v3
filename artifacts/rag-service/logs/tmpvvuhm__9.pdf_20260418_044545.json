@@ -1,0 +1,107 @@
+[
+  {
+    "total_page_number": 49
+  },
+  {
+    "total_token": 24025
+  },
+  {
+    "toc_content": "1755843  03/2011 3Contents\nImportant information __________________________________________________________________________________________ 4\nBefore you begin______________________________________________________________________________________________ 5Steps for setting up the drive ____________________________________________________________________________________ 6Preliminary recommendations ___________________________________________________________________________________ 7Drive ratings _________________________________________________________________________________________________ 9Dimensions and weights_______________________________________________________________________________________ 12Mounting and temperature conditions ____________________________________________________________________________ 13Mounting in a wall-mounted or floor-standing enclosure ______________________________________________________________ 16Installing the graphic display terminal_____________________________________________________________________________ 18Position of the charging LED ___________________________________________________________________________________ 19Installing option cards_________________________________________________________________________________________ 20Installing the EMC plates ______________________________________________________________________________________ 22Wiring recommendations ______________________________________________________________________________________ 23Power terminals _____________________________________________________________________________________________ 25Control terminals_____________________________________________________________________________________________ 27Option terminals _____________________________________________________________________________________________ 29Connection diagrams _________________________________________________________________________________________ 35Use on IT system and corner grounded system _____________________________________________________________________ 44\nElectromagnetic compatibility, wiring _____________________________________________________________________________ 46",
+    "toc_page_list": [
+      2
+    ],
+    "page_index_given_in_toc": "yes"
+  },
+  {
+    "message": "toc_with_page_number: [{'structure': None, 'title': 'Contents', 'page': 3}, {'structure': None, 'title': 'Important information', 'page': 4}, {'structure': None, 'title': 'Before you begin', 'page': 5}, {'structure': None, 'title': 'Steps for setting up the drive', 'page': 6}, {'structure': None, 'title': 'Preliminary recommendations', 'page': 7}, {'structure': None, 'title': 'Drive ratings', 'page': 9}, {'structure': None, 'title': 'Dimensions and weights', 'page': 12}, {'structure': None, 'title': 'Mounting and temperature conditions', 'page': 13}, {'structure': None, 'title': 'Mounting in a wall-mounted or floor-standing enclosure', 'page': 16}, {'structure': None, 'title': 'Installing the graphic display terminal', 'page': 18}, {'structure': None, 'title': 'Position of the charging LED', 'page': 19}, {'structure': None, 'title': 'Installing option cards', 'page': 20}, {'structure': None, 'title': 'Installing the EMC plates', 'page': 22}, {'structure': None, 'title': 'Wiring recommendations', 'page': 23}, {'structure': None, 'title': 'Power terminals', 'page': 25}, {'structure': None, 'title': 'Control terminals', 'page': 27}, {'structure': None, 'title': 'Option terminals', 'page': 29}, {'structure': None, 'title': 'Connection diagrams', 'page': 35}, {'structure': None, 'title': 'Use on IT system and corner grounded system', 'page': 44}, {'structure': None, 'title': 'Electromagnetic compatibility, wiring', 'page': 46}]"
+  },
+  {
+    "message": "toc_with_physical_index: [{'structure': None, 'title': 'Important information', 'physical_index': 'physical_index_4'}, {'structure': None, 'title': 'Before you begin', 'physical_index': 'physical_index_5'}, {'structure': None, 'title': 'Steps for setting up the drive', 'physical_index': 'physical_index_6'}, {'structure': None, 'title': 'Preliminary recommendations', 'physical_index': 'physical_index_7'}, {'structure': None, 'title': 'Drive ratings', 'physical_index': 'physical_index_9'}, {'structure': None, 'title': 'Dimensions and weights', 'physical_index': 'physical_index_12'}, {'structure': None, 'title': 'Mounting and temperature conditions', 'physical_index': 'physical_index_13'}, {'structure': None, 'title': 'Mounting in a wall-mounted or floor-standing enclosure', 'physical_index': 'physical_index_16'}, {'structure': None, 'title': 'Installing the graphic display terminal', 'physical_index': 'physical_index_18'}, {'structure': None, 'title': 'Position of the charging LED', 'physical_index': 'physical_index_19'}, {'structure': None, 'title': 'Installing option cards', 'physical_index': 'physical_index_20'}, {'structure': None, 'title': 'Installing the EMC plates', 'physical_index': 'physical_index_22'}, {'structure': None, 'title': 'Wiring recommendations', 'physical_index': 'physical_index_23'}]"
+  },
+  {
+    "message": "toc_with_physical_index: [{'structure': None, 'title': 'Important information', 'physical_index': 4}, {'structure': None, 'title': 'Before you begin', 'physical_index': 5}, {'structure': None, 'title': 'Steps for setting up the drive', 'physical_index': 6}, {'structure': None, 'title': 'Preliminary recommendations', 'physical_index': 7}, {'structure': None, 'title': 'Drive ratings', 'physical_index': 9}, {'structure': None, 'title': 'Dimensions and weights', 'physical_index': 12}, {'structure': None, 'title': 'Mounting and temperature conditions', 'physical_index': 13}, {'structure': None, 'title': 'Mounting in a wall-mounted or floor-standing enclosure', 'physical_index': 16}, {'structure': None, 'title': 'Installing the graphic display terminal', 'physical_index': 18}, {'structure': None, 'title': 'Position of the charging LED', 'physical_index': 19}, {'structure': None, 'title': 'Installing option cards', 'physical_index': 20}, {'structure': None, 'title': 'Installing the EMC plates', 'physical_index': 22}, {'structure': None, 'title': 'Wiring recommendations', 'physical_index': 23}]"
+  },
+  {
+    "message": "matching_pairs: [{'title': 'Important information', 'page': 4, 'physical_index': 4}, {'title': 'Before you begin', 'page': 5, 'physical_index': 5}, {'title': 'Steps for setting up the drive', 'page': 6, 'physical_index': 6}, {'title': 'Preliminary recommendations', 'page': 7, 'physical_index': 7}, {'title': 'Drive ratings', 'page': 9, 'physical_index': 9}, {'title': 'Dimensions and weights', 'page': 12, 'physical_index': 12}, {'title': 'Mounting and temperature conditions', 'page': 13, 'physical_index': 13}, {'title': 'Mounting in a wall-mounted or floor-standing enclosure', 'page': 16, 'physical_index': 16}, {'title': 'Installing the graphic display terminal', 'page': 18, 'physical_index': 18}, {'title': 'Position of the charging LED', 'page': 19, 'physical_index': 19}, {'title': 'Installing option cards', 'page': 20, 'physical_index': 20}, {'title': 'Installing the EMC plates', 'page': 22, 'physical_index': 22}, {'title': 'Wiring recommendations', 'page': 23, 'physical_index': 23}]"
+  },
+  {
+    "message": "offset: 0"
+  },
+  {
+    "message": "toc_with_page_number: [{'structure': None, 'title': 'Contents', 'physical_index': 3}, {'structure': None, 'title': 'Important information', 'physical_index': 4}, {'structure': None, 'title': 'Before you begin', 'physical_index': 5}, {'structure': None, 'title': 'Steps for setting up the drive', 'physical_index': 6}, {'structure': None, 'title': 'Preliminary recommendations', 'physical_index': 7}, {'structure': None, 'title': 'Drive ratings', 'physical_index': 9}, {'structure': None, 'title': 'Dimensions and weights', 'physical_index': 12}, {'structure': None, 'title': 'Mounting and temperature conditions', 'physical_index': 13}, {'structure': None, 'title': 'Mounting in a wall-mounted or floor-standing enclosure', 'physical_index': 16}, {'structure': None, 'title': 'Installing the graphic display terminal', 'physical_index': 18}, {'structure': None, 'title': 'Position of the charging LED', 'physical_index': 19}, {'structure': None, 'title': 'Installing option cards', 'physical_index': 20}, {'structure': None, 'title': 'Installing the EMC plates', 'physical_index': 22}, {'structure': None, 'title': 'Wiring recommendations', 'physical_index': 23}, {'structure': None, 'title': 'Power terminals', 'physical_index': 25}, {'structure': None, 'title': 'Control terminals', 'physical_index': 27}, {'structure': None, 'title': 'Option terminals', 'physical_index': 29}, {'structure': None, 'title': 'Connection diagrams', 'physical_index': 35}, {'structure': None, 'title': 'Use on IT system and corner grounded system', 'physical_index': 44}, {'structure': None, 'title': 'Electromagnetic compatibility, wiring', 'physical_index': 46}]"
+  },
+  {
+    "message": "toc_with_page_number: [{'structure': None, 'title': 'Contents', 'physical_index': 3}, {'structure': None, 'title': 'Important information', 'physical_index': 4}, {'structure': None, 'title': 'Before you begin', 'physical_index': 5}, {'structure': None, 'title': 'Steps for setting up the drive', 'physical_index': 6}, {'structure': None, 'title': 'Preliminary recommendations', 'physical_index': 7}, {'structure': None, 'title': 'Drive ratings', 'physical_index': 9}, {'structure': None, 'title': 'Dimensions and weights', 'physical_index': 12}, {'structure': None, 'title': 'Mounting and temperature conditions', 'physical_index': 13}, {'structure': None, 'title': 'Mounting in a wall-mounted or floor-standing enclosure', 'physical_index': 16}, {'structure': None, 'title': 'Installing the graphic display terminal', 'physical_index': 18}, {'structure': None, 'title': 'Position of the charging LED', 'physical_index': 19}, {'structure': None, 'title': 'Installing option cards', 'physical_index': 20}, {'structure': None, 'title': 'Installing the EMC plates', 'physical_index': 22}, {'structure': None, 'title': 'Wiring recommendations', 'physical_index': 23}, {'structure': None, 'title': 'Power terminals', 'physical_index': 25}, {'structure': None, 'title': 'Control terminals', 'physical_index': 27}, {'structure': None, 'title': 'Option terminals', 'physical_index': 29}, {'structure': None, 'title': 'Connection diagrams', 'physical_index': 35}, {'structure': None, 'title': 'Use on IT system and corner grounded system', 'physical_index': 44}, {'structure': None, 'title': 'Electromagnetic compatibility, wiring', 'physical_index': 46}]"
+  },
+  {
+    "mode": "process_toc_with_page_numbers",
+    "accuracy": 1.0,
+    "incorrect_results": []
+  },
+  {
+    "message": "Checking title appearance in start concurrently"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 25Power terminals' where 'Power terminals' appears immediately after '25' (likely a page number). This matches the section title 'Power terminals'. The very first content line contains the section title, making it the beginning of this section in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 19Position of the charging LED' where the section title 'Position of the charging LED' appears immediately after the page number and date information. There is no other content before this section title - the page number '1755843 03/2011 19' is just metadata/header information, not actual content. The section title is the first actual content in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '16 1755843 03/2011Mounting in a wall-mounted or floor-standing enclosure'. After the page number and document identifier '16 1755843 03/2011', the very first content is the section title 'Mounting in a wall-mounted or floor-standing enclosure'. There is no other content before this section title in the page_text, so the section does start at the beginning of the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '6 1755843 03/2011Steps for setting up the drive'. After the document identifier and date, the very first content is the section title 'Steps for setting up the drive'. There is no other content before this section title in the page_text, making it the first substantive content.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 35Connection diagrams' where 'Connection diagrams' appears immediately after some document metadata (document number and date). The section title 'Connection diagrams' is the first actual content section in the page_text, appearing right at the beginning after the header information. There is no other substantive content before this section title.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 23Wiring recommendations' where 'Wiring recommendations' appears immediately after the document number and date. This is the first content in the page_text, making it the beginning of the page. The section title 'Wiring recommendations' matches the text at the start of the page (ignoring the document number prefix).\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '22 1755843 03/2011Installing the EMC plates' which contains the section title 'Installing the EMC plates' at the very beginning (after the page number and document identifier). There is no other content before this section title appears, making it the first content section in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 www.schneider-electric.comAltivar 71' followed by product information and 'Installation Manual'. The section title 'Preface' does not appear anywhere in the given page_text. This appears to be a title/cover page of the manual, not the Preface section. Therefore, the Preface section does not start at the beginning of this page_text.\", 'start_begin': 'no'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 9Drive ratings' where '9Drive ratings' appears to be the section title 'Drive ratings' with a '9' character immediately before it (likely a page number). This means 'Drive ratings' is the first actual content section in the page_text, appearing right at the beginning after the document identifier and date. There is no other substantive content before the section title.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '4 1755843 03/2011Important information'. After the document number and date, 'Important information' appears immediately, making it the first content section of the page. There is no other substantive content before the 'Important information' section title.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 5Before you begin' where the section title 'Before you begin' appears immediately at the beginning (after the document number and date). There is no other content before this section title - the document number '1755843', date '03/2011', and page number '5' are metadata/header information, not content. The actual content starts with the section title 'Before you begin', making it the first content element in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '44 1755843 03/2011Use on IT system and corner grounded system'. After the page number and document identifier '44 1755843 03/2011', the very first content is the section title 'Use on IT system and corner grounded system'. There is no other content before this section title (the page number and document ID are metadata, not content). Therefore, this section starts at the beginning of the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 7Preliminary recommendations' where 'Preliminary recommendations' appears immediately after the page number and date. This is the first content section in the page_text, with no other section content appearing before it. The text that follows ('Handling and storage', 'Handling on installation', etc.) are all subsections under 'Preliminary recommendations'.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 3Contents' where 'Contents' is the section title. Although there is some text before it ('1755843 03/2011 3'), this appears to be a document identifier and page number, which are standard header elements that appear on every page. The actual content structure begins with 'Contents' followed by the table of contents entries. The section title 'Contents' is the first substantive content element in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '18 1755843 03/2011Installing the graphic display terminal'. After removing the page number and document ID (18 1755843 03/2011), the very first content is 'Installing the graphic display terminal', which exactly matches the given section title. There is no other content before this section title in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 29Option terminals' where 'Option terminals' appears at the very beginning (after document number and date). This matches the section title 'Option terminals'. There is no other content before this section title in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 13Mounting and temp erature conditions' (note the space in 'temp erature'). The section title is 'Mounting and temperature conditions'. Ignoring space inconsistencies as instructed, 'Mounting and temp erature conditions' matches 'Mounting and temperature conditions'. The only content before this title is '1755843 03/2011 13' which appears to be a document number, date, and page number - these are header/metadata elements, not actual content. The section title 'Mounting and temperature conditions' is the first actual content in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '1755843 03/2011 27Control terminals' where 'Control terminals' appears after some document metadata (document number and date). The actual content section titled 'Control terminals' begins immediately after this header, with 'Access to the control terminals' being the first subsection. While there is a document number and date before the section title, these appear to be page header metadata rather than substantive content from a different section. The section 'Control terminals' is the first actual content section in the page_text.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '12 1755843 03/2011Dimensions and weights' where 'Dimensions and weights' is the section title. Although there is some text before it ('12 1755843 03/2011'), this appears to be a page number and document reference number, which is typical header/metadata information rather than actual content. The section title 'Dimensions and weights' appears immediately after this header information and is followed by the actual content of the section ('With graphic display terminal'). Therefore, the section does start at the beginning of the page_text content.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '46 1755843 03/2011Electromagnetic compatibility, wiring' where the section title 'Electromagnetic compatibility, wiring' appears immediately after the page number and document identifier. This is the first content/heading in the page_text, with no other section content appearing before it. The text that follows ('Electromagnetic compatibility' as a subheading and 'Principle') are subsections under this main section title.\", 'start_begin': 'yes'}"
+  },
+  {
+    "message": "Response: {'thinking': \"The page_text starts with '20 1755843 03/2011Installing option cards' where 'Installing option cards' is the section title. Although there is a page number '20' and what appears to be a document number '1755843 03/2011' before the section title, these are standard page header elements rather than content from a different section. The actual content of the section (the instructions about installing option cards) begins immediately after the title, making this section title the first substantive content on the page.\", 'start_begin': 'yes'}"
+  }
+]

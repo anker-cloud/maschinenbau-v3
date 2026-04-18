@@ -62,6 +62,23 @@ def _process_ingest(payload: "IngestRequest") -> None:
             return
 
         total = len(pages)
+
+        # Detect scanned/image-only PDFs early: if a multi-page PDF yields almost
+        # no extractable characters it almost certainly has no text layer.
+        ft = (payload.file_type or "").lower()
+        _is_pdf_check = "pdf" in ft or (payload.filename or "").lower().endswith(".pdf")
+        if _is_pdf_check and total > 0:
+            total_chars = sum(len(text) for _, text in pages)
+            avg_chars = total_chars / total
+            if avg_chars < 50:  # fewer than ~50 chars/page = effectively no text
+                log.error(
+                    "worker: PDF appears to be scanned/image-based (avg %.0f chars/page) "
+                    "— no text layer found, cannot index document_id=%s",
+                    avg_chars,
+                    payload.document_id,
+                )
+                db.update_document_status(payload.document_id, "failed")
+                return
         db.update_document_progress(payload.document_id, 0, total)
 
         BATCH = 5
@@ -79,9 +96,8 @@ def _process_ingest(payload: "IngestRequest") -> None:
             stored += len(batch_buf)
             db.update_document_progress(payload.document_id, stored, total)
 
-        ft = (payload.file_type or "").lower()
         name = (payload.filename or "").lower()
-        is_pdf = "pdf" in ft or name.endswith(".pdf")
+        is_pdf = _is_pdf_check
 
         def _flat_tree() -> list[dict]:
             return [
