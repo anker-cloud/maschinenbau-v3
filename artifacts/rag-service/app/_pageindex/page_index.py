@@ -279,61 +279,69 @@ def toc_transformer(toc_content, model=None):
 
     The response should be in the following JSON format: 
     {
-    table_of_contents: [
+    "table_of_contents": [
         {
             "structure": <structure index, "x.x.x" or None> (string),
             "title": <title of the section>,
-            "page": <page number or None>,
+            "page": <page number or None>
         },
         ...
-        ],
+        ]
     }
     You should transform the full table of contents in one go.
     Directly return the final JSON structure, do not output anything else. """
 
     prompt = init_prompt + '\n Given table of contents\n:' + toc_content
-    last_complete, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
-    if_complete = check_if_toc_transformation_is_complete(toc_content, last_complete, model)
-    if if_complete == "yes" and finish_reason == "finished":
-        last_complete = extract_json(last_complete)
-        cleaned_response=convert_page_to_int(last_complete.get('table_of_contents', []))
-        return cleaned_response
-    
-    last_complete = get_json_content(last_complete)
-    attempt = 0
-    max_attempts = 5
-    while not (if_complete == "yes" and finish_reason == "finished"):
-        attempt += 1
-        if attempt > max_attempts:
-            raise Exception('Failed to complete toc transformation after maximum retries')
-        position = last_complete.rfind('}')
+    accumulated, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
+
+    # Happy path: model stopped naturally — JSON is complete.
+    if finish_reason == "finished":
+        result = extract_json(accumulated)
+        if isinstance(result, dict):
+            return convert_page_to_int(result.get('table_of_contents', []))
+
+    # Output was cut off — strip code fences and continue appending.
+    accumulated = get_json_content(accumulated)
+
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        # Trim to the last complete JSON object so the continuation point is valid.
+        position = accumulated.rfind('}')
         if position != -1:
-            last_complete = last_complete[:position+2]
-        prompt = f"""
-        Your task is to continue the table of contents json structure, directly output the remaining part of the json structure.
-        The response should be in the following JSON format: 
+            accumulated = accumulated[:position + 1]
 
-        The raw table of contents json structure is:
-        {toc_content}
+        cont_prompt = f"""Your task is to continue the table of contents JSON structure below.
+Only output the remaining entries and the closing brackets — do not repeat what is already there.
 
-        The incomplete transformed table of contents json structure is:
-        {last_complete}
+Raw table of contents (for reference):
+{toc_content}
 
-        Please continue the json structure, directly output the remaining part of the json structure."""
+Incomplete JSON so far (do NOT repeat this — continue from where it ends):
+{accumulated}
 
-        new_complete, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
+Continue the JSON directly:"""
 
-        if new_complete.startswith('```json'):
-            new_complete = get_json_content(new_complete)
-        last_complete = last_complete + new_complete
+        new_chunk, finish_reason = llm_completion(model=model, prompt=cont_prompt, return_finish_reason=True)
 
-        if_complete = check_if_toc_transformation_is_complete(toc_content, last_complete, model)
-        
+        if new_chunk.startswith('```json'):
+            new_chunk = get_json_content(new_chunk)
+        accumulated = accumulated + new_chunk
 
-    last_complete = extract_json(last_complete)
+        if finish_reason == "finished":
+            result = extract_json(accumulated)
+            if isinstance(result, dict) and 'table_of_contents' in result:
+                return convert_page_to_int(result['table_of_contents'])
+            # Try wrapping partial array in case the outer object was cut
+            try:
+                import json as _json
+                inner = accumulated.strip().lstrip('{').strip()
+                if inner.startswith('"table_of_contents"'):
+                    result = _json.loads('{' + inner + '}')
+                    return convert_page_to_int(result.get('table_of_contents', []))
+            except Exception:
+                pass
 
-    cleaned_response=convert_page_to_int(last_complete.get('table_of_contents', []))
-    return cleaned_response
+    raise Exception('Failed to complete toc transformation after maximum retries')
     
 
 
