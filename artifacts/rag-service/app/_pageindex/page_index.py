@@ -324,8 +324,8 @@ def toc_transformer(toc_content, model=None):
         new_complete, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
 
         if new_complete.startswith('```json'):
-            new_complete =  get_json_content(new_complete)
-            last_complete = last_complete+new_complete
+            new_complete = get_json_content(new_complete)
+        last_complete = last_complete + new_complete
 
         if_complete = check_if_toc_transformation_is_complete(toc_content, last_complete, model)
         
