@@ -21,7 +21,7 @@ AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION"
 
 # Bedrock model IDs. Override via env if a different region/model is enabled.
 BEDROCK_CHAT_MODEL_ID = os.environ.get(
-    "BEDROCK_CHAT_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
+    "BEDROCK_CHAT_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250514-v1:0"
 )
 BEDROCK_EMBEDDING_MODEL_ID = os.environ.get(
     "BEDROCK_EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v2:0"
