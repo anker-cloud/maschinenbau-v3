@@ -1,0 +1,61 @@
+[
+  {
+    "total_page_number": 116
+  },
+  {
+    "total_token": 63012
+  },
+  {
+    "toc_content": "BBV28582  06/2009 3Inhalt\nWichtige Informationen_________________________________________________________________________________________ 4\nVorbereitungsma\u00dfnahmen ______________________________________________________________________________________ 5Aufbau der Dokumentation______________________________________________________________________________________ 7Vorgehensweise zur Inbetriebnahme (siehe auch Anleitung zur Schnellinbetriebnahme)______________________________________ 8Inbetriebnahme \u2013 Einleitende Empfehlungen________________________________________________________________________ 9Bemessungsdaten des Umrichters_______________________________________________________________________________ 10Abmessungen und Gewichte ___________________________________________________________________________________ 11Montage ___________________________________________________________________________________________________ 12Verdrahtung ________________________________________________________________________________________________ 15Leistungsklemmen ___________________________________________________________________________________________ 19Steuerklemmen______________________________________________________________________________________________ 22Checkliste __________________________________________________________________________________________________ 28Werkseitige Konfiguration______________________________________________________________________________________ 29Grundlegende Funktionen _____________________________________________________________________________________ 30Programmierung_____________________________________________________________________________________________ 31Aufbau der Parametertabellen __________________________________________________________________________________ 34Tabelle zur Funktionskompatibilit\u00e4t ______________________________________________________________________________ 35Referenzmodus rEF __________________________________________________________________________________________ 36\u00dcberwachungsmodus MOn ____________________________________________________________________________________ 37Konfigurationsmodus ConF ____________________________________________________________________________________ 43Konfigurationsmodus \u2013 \u201eMyMenu\u201c _______________________________________________________________________________ 44Konfigurationsmodus \u2013 Men\u00fc \u201eGesamt\u201c (FULL)_____________________________________________________________________ 46Wartung ___________________________________________________________________________________________________ 85Migration ATV11 - ATV12______________________________________________________________________________________ 86Diagnose und Fehlerbehebung _________________________________________________________________________________ 93Anwendungshinweise_________________________________________________________________________________________ 99Empfohlener Nebenstromkreisschutz____________________________________________________________________________ 105Strukturbaum ______________________________________________________________________________________________ 106Parameter-Index____________________________________________________________________________________________ 107\nEnergieeinsparungen \nDie Regelung von Prozessen zur Drehzahlsteuerung erm \u00f6glicht erhebliche Energieeinsparungen, insbesondere bei\nPumpen- und L\u00fcfteranwendungen.Zudem erm\u00f6glichen einige Funktionen des ATV12 eine Ve rbesserung dieser Einsparungen: Typ Motorsteuerung\nCtt  auf Seite 55\n, Sleep/Wake tLS  auf Seite 72 und PID-Regelung PIF  auf Seite 70.\n",
+    "toc_page_list": [
+      2
+    ],
+    "page_index_given_in_toc": "yes"
+  },
+  {
+    "message": "toc_with_page_number: []"
+  },
+  {
+    "message": "toc_with_physical_index: [{'structure': None, 'title': 'Wichtige Informationen', 'physical_index': 'physical_index_4'}, {'structure': None, 'title': 'Vorbereitungsma\u00dfnahmen', 'physical_index': 'physical_index_5'}, {'structure': None, 'title': 'Aufbau der Dokumentation', 'physical_index': 'physical_index_7'}, {'structure': None, 'title': 'Vorgehensweise zur Inbetriebnahme', 'physical_index': 'physical_index_8'}, {'structure': None, 'title': 'Inbetriebnahme \u2013 Einleitende Empfehlungen', 'physical_index': 'physical_index_9'}, {'structure': None, 'title': 'Bemessungsdaten des Umrichters', 'physical_index': 'physical_index_10'}, {'structure': None, 'title': 'Abmessungen und Gewichte', 'physical_index': 'physical_index_11'}, {'structure': None, 'title': 'Montage', 'physical_index': 'physical_index_12'}, {'structure': None, 'title': 'Installation der EMV-Platten', 'physical_index': 'physical_index_14'}, {'structure': None, 'title': 'Verdrahtung', 'physical_index': 'physical_index_15'}, {'structure': None, 'title': 'Verdrahtungsetiketten', 'physical_index': 'physical_index_18'}, {'structure': None, 'title': 'Leistungsklemmen', 'physical_index': 'physical_index_19'}, {'structure': None, 'title': 'Steuerklemmen', 'physical_index': 'physical_index_22'}]"
+  },
+  {
+    "message": "toc_with_physical_index: [{'structure': None, 'title': 'Wichtige Informationen', 'physical_index': 4}, {'structure': None, 'title': 'Vorbereitungsma\u00dfnahmen', 'physical_index': 5}, {'structure': None, 'title': 'Aufbau der Dokumentation', 'physical_index': 7}, {'structure': None, 'title': 'Vorgehensweise zur Inbetriebnahme', 'physical_index': 8}, {'structure': None, 'title': 'Inbetriebnahme \u2013 Einleitende Empfehlungen', 'physical_index': 9}, {'structure': None, 'title': 'Bemessungsdaten des Umrichters', 'physical_index': 10}, {'structure': None, 'title': 'Abmessungen und Gewichte', 'physical_index': 11}, {'structure': None, 'title': 'Montage', 'physical_index': 12}, {'structure': None, 'title': 'Installation der EMV-Platten', 'physical_index': 14}, {'structure': None, 'title': 'Verdrahtung', 'physical_index': 15}, {'structure': None, 'title': 'Verdrahtungsetiketten', 'physical_index': 18}, {'structure': None, 'title': 'Leistungsklemmen', 'physical_index': 19}, {'structure': None, 'title': 'Steuerklemmen', 'physical_index': 22}]"
+  },
+  {
+    "message": "matching_pairs: []"
+  },
+  {
+    "message": "offset: None"
+  },
+  {
+    "message": "toc_with_page_number: []"
+  },
+  {
+    "message": "toc_with_page_number: []"
+  },
+  {
+    "mode": "process_toc_with_page_numbers",
+    "accuracy": 0,
+    "incorrect_results": []
+  },
+  {
+    "message": "toc_transformer: []"
+  },
+  {
+    "message": "len(group_texts): 13"
+  },
+  {
+    "message": "add_page_number_to_toc: [{'structure': None, 'title': 'Verdrahtung', 'physical_index': None}, {'structure': None, 'title': 'Verdrahtungsetiketten', 'physical_index': None}, {'structure': None, 'title': 'Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Zugang zu den Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Kenndaten und Funktionen der Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Anordnung der Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Zugang zu den Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Anordnung der Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Kenndaten und Funktionen der Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Anschlussschemata der Steuerung', 'physical_index': None}, {'structure': None, 'title': 'Elektromagnetische Vertr\u00e4glichkeit (EMV)', 'physical_index': None}, {'structure': None, 'title': 'Sicherheitsvorkehrungen', 'physical_index': None}, {'structure': None, 'title': 'Installationsschema (Beispiel)', 'physical_index': None}, {'structure': None, 'title': 'EMV-Bedingungen f\u00fcr den ATV12 pppp M2', 'physical_index': None}, {'structure': None, 'title': 'Interner EMV-Filter am ATV12 pppp M2', 'physical_index': None}, {'structure': None, 'title': 'Checkliste', 'physical_index': None}, {'structure': None, 'title': 'Werkseitige Konfiguration', 'physical_index': None}, {'structure': None, 'title': 'Grundlegende Funktionen', 'physical_index': None}, {'structure': None, 'title': 'Programmierung', 'physical_index': None}, {'structure': None, 'title': 'Erstmaliges Einschalten', 'physical_index': None}, {'structure': None, 'title': 'Aufbau der Parametertabellen', 'physical_index': None}, {'structure': None, 'title': 'Tabelle zur Funktionskompatibilit\u00e4t', 'physical_index': None}, {'structure': None, 'title': 'Referenzmodus rEF', 'physical_index': None}, {'structure': None, 'title': '\u00dcberwachungsmodus MOn', 'physical_index': None}, {'structure': None, 'title': 'Konfigurationsmodus ConF', 'physical_index': None}]"
+  },
+  {
+    "message": "convert_physical_index_to_int: [{'structure': None, 'title': 'Verdrahtung', 'physical_index': None}, {'structure': None, 'title': 'Verdrahtungsetiketten', 'physical_index': None}, {'structure': None, 'title': 'Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Zugang zu den Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Kenndaten und Funktionen der Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Anordnung der Leistungsklemmen', 'physical_index': None}, {'structure': None, 'title': 'Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Zugang zu den Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Anordnung der Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Kenndaten und Funktionen der Steuerklemmen', 'physical_index': None}, {'structure': None, 'title': 'Anschlussschemata der Steuerung', 'physical_index': None}, {'structure': None, 'title': 'Elektromagnetische Vertr\u00e4glichkeit (EMV)', 'physical_index': None}, {'structure': None, 'title': 'Sicherheitsvorkehrungen', 'physical_index': None}, {'structure': None, 'title': 'Installationsschema (Beispiel)', 'physical_index': None}, {'structure': None, 'title': 'EMV-Bedingungen f\u00fcr den ATV12 pppp M2', 'physical_index': None}, {'structure': None, 'title': 'Interner EMV-Filter am ATV12 pppp M2', 'physical_index': None}, {'structure': None, 'title': 'Checkliste', 'physical_index': None}, {'structure': None, 'title': 'Werkseitige Konfiguration', 'physical_index': None}, {'structure': None, 'title': 'Grundlegende Funktionen', 'physical_index': None}, {'structure': None, 'title': 'Programmierung', 'physical_index': None}, {'structure': None, 'title': 'Erstmaliges Einschalten', 'physical_index': None}, {'structure': None, 'title': 'Aufbau der Parametertabellen', 'physical_index': None}, {'structure': None, 'title': 'Tabelle zur Funktionskompatibilit\u00e4t', 'physical_index': None}, {'structure': None, 'title': 'Referenzmodus rEF', 'physical_index': None}, {'structure': None, 'title': '\u00dcberwachungsmodus MOn', 'physical_index': None}, {'structure': None, 'title': 'Konfigurationsmodus ConF', 'physical_index': None}]"
+  },
+  {
+    "mode": "process_toc_with_page_numbers",
+    "accuracy": 0,
+    "incorrect_results": []
+  },
+  {
+    "message": "len(group_texts): 13"
+  }
+]
