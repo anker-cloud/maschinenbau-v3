@@ -49,7 +49,7 @@ def llm_completion(model, prompt, chat_history=None, return_finish_reason=False)
                 model=model,
                 messages=messages,
                 temperature=0,
-                max_tokens=4096,
+                max_tokens=16384,
             )
             content = response.choices[0].message.content or ""
             if return_finish_reason:
@@ -78,7 +78,7 @@ async def llm_acompletion(model, prompt):
                 model=model,
                 messages=messages,
                 temperature=0,
-                max_tokens=4096,
+                max_tokens=16384,
             )
             return response.choices[0].message.content or ""
         except Exception as e:
