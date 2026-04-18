@@ -90,25 +90,16 @@ def _process_ingest(payload: "IngestRequest") -> None:
                     "node_id": "root",
                     "start_index": 1,
                     "end_index": len(pages),
-                    "summary": "Full document (flat tree — PageIndex unavailable)",
+                    "summary": "Full document",
                 }
             ]
 
         if is_pdf:
-            try:
-                tree = build_tree_from_pdf(data)
-                if not tree:
-                    log.warning(
-                        "worker: PageIndex returned empty tree for document_id=%s, using flat fallback",
-                        payload.document_id,
-                    )
-                    tree = _flat_tree()
-            except Exception:
-                log.exception(
-                    "worker: PageIndex tree build failed for document_id=%s, using flat fallback",
-                    payload.document_id,
+            tree = build_tree_from_pdf(data)
+            if not tree:
+                raise RuntimeError(
+                    f"PageIndex returned an empty tree for document_id={payload.document_id}"
                 )
-                tree = _flat_tree()
         else:
             tree = _flat_tree()
         db.update_document_tree(payload.document_id, tree)
