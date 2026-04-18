@@ -49,8 +49,9 @@ def llm_completion(model, prompt, chat_history=None, return_finish_reason=False)
                 model=model,
                 messages=messages,
                 temperature=0,
+                max_tokens=4096,
             )
-            content = response.choices[0].message.content
+            content = response.choices[0].message.content or ""
             if return_finish_reason:
                 finish_reason = "max_output_reached" if response.choices[0].finish_reason == "length" else "finished"
                 return content, finish_reason
@@ -77,8 +78,9 @@ async def llm_acompletion(model, prompt):
                 model=model,
                 messages=messages,
                 temperature=0,
+                max_tokens=4096,
             )
-            return response.choices[0].message.content
+            return response.choices[0].message.content or ""
         except Exception as e:
             logging.warning(f"PageIndex LLM retry {i + 1}/{_MAX_RETRIES}: {e}")
             if i < _MAX_RETRIES - 1:
