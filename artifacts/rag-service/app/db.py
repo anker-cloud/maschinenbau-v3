@@ -46,6 +46,21 @@ def update_document_status(document_id: str, status: str) -> None:
         )
 
 
+def reset_stuck_ingesting_documents() -> list[str]:
+    """Mark any documents left in 'ingesting' status as 'failed'.
+
+    Called at service startup so documents interrupted by a crash or restart
+    don't stay stuck in a processing state forever.
+    Returns the list of document IDs that were reset.
+    """
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE documents SET status = 'failed' WHERE status = 'ingesting' RETURNING id"
+        )
+        rows = cur.fetchall()
+    return [r["id"] for r in rows]
+
+
 def update_document_progress(
     document_id: str, progress: int, total_pages: int
 ) -> None:

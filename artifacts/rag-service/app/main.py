@@ -138,6 +138,15 @@ def _worker() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Reset any documents that were left mid-ingest by a previous crash/restart.
+    reset_ids = db.reset_stuck_ingesting_documents()
+    if reset_ids:
+        log.warning(
+            "startup: reset %d stuck ingesting document(s) to 'failed': %s",
+            len(reset_ids),
+            reset_ids,
+        )
+
     t = threading.Thread(target=_worker, daemon=True, name="ingest-worker")
     t.start()
     log.info("ingest worker thread started")
