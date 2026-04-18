@@ -82,18 +82,35 @@ def _process_ingest(payload: "IngestRequest") -> None:
         ft = (payload.file_type or "").lower()
         name = (payload.filename or "").lower()
         is_pdf = "pdf" in ft or name.endswith(".pdf")
-        if is_pdf:
-            tree = build_tree_from_pdf(data)
-        else:
-            tree = [
+
+        def _flat_tree() -> list[dict]:
+            return [
                 {
                     "title": payload.filename or "Document",
                     "node_id": "root",
                     "start_index": 1,
                     "end_index": len(pages),
-                    "summary": "Full document (non-PDF, no PageIndex tree)",
+                    "summary": "Full document (flat tree — PageIndex unavailable)",
                 }
             ]
+
+        if is_pdf:
+            try:
+                tree = build_tree_from_pdf(data)
+                if not tree:
+                    log.warning(
+                        "worker: PageIndex returned empty tree for document_id=%s, using flat fallback",
+                        payload.document_id,
+                    )
+                    tree = _flat_tree()
+            except Exception:
+                log.exception(
+                    "worker: PageIndex tree build failed for document_id=%s, using flat fallback",
+                    payload.document_id,
+                )
+                tree = _flat_tree()
+        else:
+            tree = _flat_tree()
         db.update_document_tree(payload.document_id, tree)
         db.update_document_status(payload.document_id, "ready")
         log.info(
