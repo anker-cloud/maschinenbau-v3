@@ -1,0 +1,85 @@
+x-aws-env: &aws-env
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-sturtz}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  pageindex:
+    build:
+      context: ./pageindex
+    environment:
+      <<: *aws-env
+      PAGEINDEX_MODEL: ${PAGEINDEX_MODEL:-bedrock/global.anthropic.claude-sonnet-4-6}
+      PAGEINDEX_WORKSPACE: /workspace
+    volumes:
+      - pageindex_workspace:/workspace
+    ports:
+      - "8002:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  rag-service:
+    build:
+      context: .
+      dockerfile: artifacts/rag-service/Dockerfile
+    environment:
+      <<: *aws-env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sturtz}
+      PAGEINDEX_SERVICE_URL: http://pageindex:8000
+      RAG_INTERNAL_SECRET: ${RAG_INTERNAL_SECRET}
+      S3_BUCKET: ${S3_BUCKET}
+      BEDROCK_CHAT_MODEL_ID: ${BEDROCK_CHAT_MODEL_ID:-global.anthropic.claude-sonnet-4-5-20250929-v1:0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pageindex:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  api-server:
+    build:
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    environment:
+      <<: *aws-env
+      PORT: "8080"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sturtz}
+      JWT_SECRET: ${JWT_SECRET}
+      RAG_SERVICE_URL: http://rag-service:8000
+      RAG_INTERNAL_SECRET: ${RAG_INTERNAL_SECRET}
+      NODE_ENV: production
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      S3_BUCKET: ${S3_BUCKET}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@sturtz.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rag-service:
+        condition: service_started
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
+  pageindex_workspace:
