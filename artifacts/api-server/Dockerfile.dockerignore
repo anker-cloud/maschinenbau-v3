@@ -1,0 +1,13 @@
+node_modules/
+**/node_modules/
+.pnpm-store/
+.git/
+artifacts/rag-service/
+artifacts/chat-web/
+artifacts/mockup-sandbox/
+pageindex/
+**/__pycache__/
+*.pyc
+.replit
+replit.md
+pyproject.toml
