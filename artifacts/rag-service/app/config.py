@@ -45,6 +45,8 @@ if os.environ.get("NODE_ENV") == "production" and not RAG_INTERNAL_SECRET:
 # Object storage direct access (bypasses the API server entirely).
 PRIVATE_OBJECT_DIR = os.environ.get("PRIVATE_OBJECT_DIR", "")
 
+PAGEINDEX_SERVICE_URL = os.environ.get("PAGEINDEX_SERVICE_URL", "http://pageindex:8000")
+
 # Chunking
 CHUNK_TARGET_CHARS = int(os.environ.get("CHUNK_TARGET_CHARS", "1500"))
 CHUNK_OVERLAP_CHARS = int(os.environ.get("CHUNK_OVERLAP_CHARS", "200"))
