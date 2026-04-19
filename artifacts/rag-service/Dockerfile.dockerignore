@@ -1,0 +1,15 @@
+node_modules/
+**/node_modules/
+.pnpm-store/
+.git/
+artifacts/chat-web/
+artifacts/mockup-sandbox/
+artifacts/api-server/
+artifacts/rag-service/app/_pageindex/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.replit
+pageindex/cloudformation.yml
+cookbook/
