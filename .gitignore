@@ -48,5 +48,20 @@ Thumbs.db
 .cache/
 .local/
 
-# Environment secrets
+# Secrets — never commit
 .env
+.env.local
+.env.*.local
+
+# Claude Code — never track
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# pageindex service generated dirs
+pageindex/venv/
+pageindex/logs/
+pageindex/results/
