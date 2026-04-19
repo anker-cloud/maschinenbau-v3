@@ -44,6 +44,7 @@ if os.environ.get("NODE_ENV") == "production" and not RAG_INTERNAL_SECRET:
 
 # Object storage direct access (bypasses the API server entirely).
 PRIVATE_OBJECT_DIR = os.environ.get("PRIVATE_OBJECT_DIR", "")
+S3_BUCKET = os.environ.get("S3_BUCKET", "")
 
 # Chunking
 CHUNK_TARGET_CHARS = int(os.environ.get("CHUNK_TARGET_CHARS", "1500"))

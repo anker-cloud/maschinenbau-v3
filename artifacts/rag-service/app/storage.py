@@ -1,68 +1,46 @@
-"""Download document bytes from object storage.
+"""Download document bytes from AWS S3.
 
 `file_path` is the normalized path stored in the documents table, e.g.
-`/objects/uploads/<uuid>`. We resolve it back to a GCS object using the
-PRIVATE_OBJECT_DIR env var, request a short-lived signed GET URL from the
-Replit sidecar (same mechanism the Node API server uses for uploads), then
-fetch the bytes from that URL. No GCS SDK or token exchange needed.
+`/objects/uploads/<uuid>`. We strip the `/objects/` prefix to get the S3
+object key, then download directly using boto3.
 """
 from __future__ import annotations
 
-import os
-from datetime import datetime, timedelta, timezone
-from urllib.parse import quote
+import logging
 
-import requests
+import boto3
+from botocore.exceptions import ClientError
 
-from .config import PRIVATE_OBJECT_DIR
+from .config import AWS_REGION, S3_BUCKET
 
-REPLIT_SIDECAR = "http://127.0.0.1:1106"
-
-
-def _parse_gcs_path(path: str):
-    """Split '/bucket/a/b/c' into ('bucket', 'a/b/c')."""
-    path = path.lstrip("/")
-    parts = path.split("/", 1)
-    if len(parts) < 2:
-        raise ValueError(f"Invalid GCS path (need bucket + object): /{path}")
-    return parts[0], parts[1]
-
-
-def _signed_download_url(bucket_name: str, object_name: str, ttl_seconds: int = 900) -> str:
-    """Ask the Replit sidecar for a signed GET URL valid for ttl_seconds."""
-    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
-    resp = requests.post(
-        f"{REPLIT_SIDECAR}/object-storage/signed-object-url",
-        json={
-            "bucket_name": bucket_name,
-            "object_name": object_name,
-            "method": "GET",
-            "expires_at": expires_at,
-        },
-        timeout=15,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    url = data.get("signed_url")
-    if not url:
-        raise RuntimeError(f"Sidecar did not return signed_url: {data}")
-    return url
+log = logging.getLogger("rag.storage")
 
 
 def download_object(file_path: str) -> bytes:
-    """Resolve `/objects/<entityId>` -> PRIVATE_OBJECT_DIR + entityId, get a
-    signed download URL from the sidecar, and return the file bytes."""
+    """Download the object at `file_path` from S3 and return its bytes.
+
+    `file_path` must start with `/objects/`; the remainder is the S3 key.
+    """
     if not file_path.startswith("/objects/"):
-        raise ValueError(f"Unexpected file_path: {file_path}")
-    entity_id = file_path[len("/objects/"):]
+        raise ValueError(f"Unexpected file_path format (expected /objects/<key>): {file_path}")
 
-    if not PRIVATE_OBJECT_DIR:
-        raise RuntimeError("PRIVATE_OBJECT_DIR is not set")
+    key = file_path.removeprefix("/objects/")
+    if not key:
+        raise ValueError(f"file_path has empty key: {file_path}")
 
-    full_path = PRIVATE_OBJECT_DIR.rstrip("/") + "/" + entity_id
-    bucket_name, object_name = _parse_gcs_path(full_path)
+    if not S3_BUCKET:
+        raise RuntimeError("S3_BUCKET environment variable is not set")
 
-    signed_url = _signed_download_url(bucket_name, object_name)
-    resp = requests.get(signed_url, timeout=120, stream=True)
-    resp.raise_for_status()
-    return resp.content
+    s3 = boto3.client("s3", region_name=AWS_REGION)
+    try:
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
+        return obj["Body"].read()
+    except ClientError as exc:
+        error_code = exc.response["Error"]["Code"]
+        if error_code in ("NoSuchKey", "404"):
+            raise FileNotFoundError(
+                f"Object not found in S3: bucket={S3_BUCKET} key={key}"
+            ) from exc
+        raise RuntimeError(
+            f"S3 download failed: bucket={S3_BUCKET} key={key} error={error_code}"
+        ) from exc
