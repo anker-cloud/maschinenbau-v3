@@ -8,3 +8,4 @@ fastapi
 uvicorn
 boto3
 python-multipart
+json-repair>=0.30.0

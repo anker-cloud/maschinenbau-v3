@@ -5,6 +5,7 @@ import textwrap
 from datetime import datetime
 import time
 import json
+import json_repair
 import PyPDF2
 import copy
 import asyncio
@@ -175,41 +176,194 @@ def get_json_content(response):
     return json_content
 
 
-def extract_json(content):
+def extract_partial_json_array(raw: str) -> list:
+    """Salvage complete objects from a truncated JSON array.
+
+    When the LLM output is cut off mid-object (e.g. ``[{"a":1},{"b":2},{"c":``),
+    this function finds the last complete ``}`` and attempts to parse everything
+    up to (and including) it as a JSON array.
+
+    Returns a list of salvaged items, or ``[]`` if nothing can be recovered.
+    """
+    last_brace = raw.rfind("}")
+    if last_brace == -1:
+        return []
+
+    candidate = raw[: last_brace + 1] + "]"
+    # Fast path
     try:
-        # First, try to extract JSON enclosed within ```json and ```
-        start_idx = content.find("```json")
-        if start_idx != -1:
-            start_idx += 7  # Adjust index to start after the delimiter
-            end_idx = content.rfind("```")
-            json_content = content[start_idx:end_idx].strip()
-        else:
-            # If no delimiters, assume entire content could be JSON
-            json_content = content.strip()
+        result = json.loads(candidate)
+        if isinstance(result, list):
+            logging.info("extract_partial_json_array: salvaged %d item(s)", len(result))
+            return result
+    except json.JSONDecodeError:
+        pass
 
-        # Clean up common issues that might cause parsing errors
-        json_content = json_content.replace('None', 'null')  # Replace Python None with JSON null
-        json_content = json_content.replace('\n', ' ').replace('\r', ' ')  # Remove newlines
-        json_content = ' '.join(json_content.split())  # Normalize whitespace
+    # Slow path — json_repair
+    try:
+        result = json_repair.loads(candidate)
+        if isinstance(result, list):
+            logging.info(
+                "extract_partial_json_array (json_repair): salvaged %d item(s)", len(result)
+            )
+            return result
+    except Exception:
+        pass
 
-        # Attempt to parse and return the JSON object
-        return json.loads(json_content)
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to extract JSON: {e}")
-        # Try to clean up the content further if initial parsing fails
-        try:
-            # Remove any trailing commas before closing brackets/braces
-            json_content = json_content.replace(',]', ']').replace(',}', '}')
-            # Fix invalid escape sequences (e.g. \- \( \) produced by some LLMs)
-            import re
-            json_content = re.sub(r'\\([^"\\/bfnrtu])', r'\1', json_content)
-            return json.loads(json_content)
-        except:
-            logging.error("Failed to parse JSON even after cleanup")
-            return {}
-    except Exception as e:
-        logging.error(f"Unexpected error while extracting JSON: {e}")
-        return {}
+    logging.warning("extract_partial_json_array: could not salvage any items")
+    return []
+
+
+def extract_json(
+    content: str,
+    expected_type: type = dict,
+    context: str = "",
+) -> "dict | list":
+    """Parse LLM output as JSON with a multi-stage recovery chain.
+
+    Recovery order:
+    1. Strip markdown fences (``json ... `` or `` ... ``).
+    2. Replace Python literals (``None``, ``True``, ``False``).
+    3. Normalise whitespace.
+    4. ``json.loads()`` — fast path for well-formed output.
+    5. ``json_repair.loads()`` — handles trailing commas, missing commas,
+       unescaped characters, single quotes, etc.
+    6. If ``expected_type is list`` and the content starts with ``[``:
+       call ``extract_partial_json_array()`` to salvage completed items.
+    7. Log the failure (with ``context`` label and full raw content) and
+       return the appropriate empty sentinel.
+
+    The function *never* returns the wrong type: if parsing succeeds but
+    yields the wrong Python type a warning is logged and the correct
+    empty sentinel is returned.
+    """
+    _EMPTY: "dict | list" = [] if expected_type is list else {}
+
+    # ── Step 1: strip markdown fences ────────────────────────────────────────
+    json_content = content.strip()
+    start_fence = json_content.find("```json")
+    if start_fence != -1:
+        json_content = json_content[start_fence + 7:]
+        end_fence = json_content.rfind("```")
+        if end_fence != -1:
+            json_content = json_content[:end_fence]
+    else:
+        start_fence = json_content.find("```")
+        if start_fence != -1:
+            json_content = json_content[start_fence + 3:]
+            end_fence = json_content.rfind("```")
+            if end_fence != -1:
+                json_content = json_content[:end_fence]
+
+    json_content = json_content.strip()
+
+    # ── Step 2: replace Python literals ──────────────────────────────────────
+    json_content = json_content.replace("None", "null")
+    json_content = json_content.replace("True", "true")
+    json_content = json_content.replace("False", "false")
+
+    # ── Step 3: normalise whitespace ─────────────────────────────────────────
+    json_content = json_content.replace("\n", " ").replace("\r", " ")
+    json_content = " ".join(json_content.split())
+
+    # ── Step 4: fast path ────────────────────────────────────────────────────
+    try:
+        result = json.loads(json_content)
+        if not isinstance(result, expected_type):
+            logging.warning(
+                "extract_json [%s]: type mismatch — expected %s, got %s; returning empty sentinel",
+                context,
+                expected_type.__name__,
+                type(result).__name__,
+            )
+            return _EMPTY
+        return result
+    except json.JSONDecodeError:
+        pass
+
+    # ── Step 5: json_repair ───────────────────────────────────────────────────
+    try:
+        result = json_repair.loads(json_content)
+        if not isinstance(result, expected_type):
+            logging.warning(
+                "extract_json (json_repair) [%s]: type mismatch — expected %s, got %s; returning empty sentinel",
+                context,
+                expected_type.__name__,
+                type(result).__name__,
+            )
+            return _EMPTY
+        return result
+    except Exception:
+        pass
+
+    # ── Step 6: partial-array salvage ────────────────────────────────────────
+    if expected_type is list and json_content.lstrip().startswith("["):
+        salvaged = extract_partial_json_array(json_content)
+        if salvaged:
+            return salvaged
+
+    # ── Step 7: log and return empty sentinel ─────────────────────────────────
+    logging.error(
+        "extract_json [%s]: all recovery attempts failed; returning empty %s.\nRaw content:\n%s",
+        context,
+        expected_type.__name__,
+        content,
+    )
+    return _EMPTY
+
+
+def llm_completion_json(
+    model: str,
+    prompt: str,
+    expected_type: type = list,
+    max_retries: int = 2,
+    context: str = "",
+) -> "dict | list":
+    """Call the LLM and parse the response as JSON, retrying on bad JSON.
+
+    Uses ``llm_completion`` (synchronous) to match the calling convention of
+    synchronous functions in ``page_index.py``.
+
+    On each attempt:
+    1. Call ``llm_completion`` with ``return_finish_reason=True``.
+    2. Raise if ``finish_reason != 'finished'`` (truncated / error).
+    3. Parse with ``extract_json``; if the result is an empty sentinel *and*
+       the raw response was non-empty *and* retries remain, send a correction
+       prompt asking Claude to return only corrected JSON.
+
+    Returns the parsed result (list or dict) or the appropriate empty sentinel.
+    """
+    _EMPTY: "dict | list" = [] if expected_type is list else {}
+
+    response, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
+
+    if finish_reason != "finished":
+        raise Exception(f"LLM finish reason: {finish_reason}")
+
+    result = extract_json(response, expected_type=expected_type, context=context)
+
+    # If we got an empty sentinel but had content, try a correction prompt.
+    if result == _EMPTY and response and max_retries > 0:
+        type_label = "array" if expected_type is list else "object"
+        correction_prompt = (
+            "Your previous response contained invalid JSON that could not be parsed.\n\n"
+            f"Your response was:\n{response[:2000]}\n\n"
+            f"Please return ONLY the corrected JSON {type_label}. No markdown, no commentary."
+        )
+        logging.warning(
+            "llm_completion_json [%s]: retrying with correction prompt (%d retries left)",
+            context,
+            max_retries - 1,
+        )
+        return llm_completion_json(
+            model=model,
+            prompt=correction_prompt,
+            expected_type=expected_type,
+            max_retries=max_retries - 1,
+            context=context,
+        )
+
+    return result
 
 def write_node_id(data, node_id=0):
     if isinstance(data, dict):
