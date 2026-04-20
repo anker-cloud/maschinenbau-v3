@@ -6,6 +6,7 @@ import random
 import re
 from . import utils as _utils
 from .utils import *
+from .utils import llm_completion_json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -37,7 +38,7 @@ async def check_title_appearance(item, page_list, start_index=1, model=None):
     Directly return the final JSON structure. Do not output anything else."""
 
     response = await _sem_acompletion(model=model, prompt=prompt)
-    response = extract_json(response)
+    response = extract_json(response, expected_type=dict, context="check_title_appearance")
     if 'answer' in response:
         answer = response['answer']
     else:
@@ -65,7 +66,7 @@ async def check_title_appearance_in_start(title, page_text, model=None, logger=N
     Directly return the final JSON structure. Do not output anything else."""
 
     response = await _sem_acompletion(model=model, prompt=prompt)
-    response = extract_json(response)
+    response = extract_json(response, expected_type=dict, context="check_title_appearance_in_start")
     if logger:
         logger.info(f"Response: {response}")
     return response.get("start_begin", "no")
@@ -118,7 +119,7 @@ def toc_detector_single_page(content, model=None):
 
     response = llm_completion(model=model, prompt=prompt)
     # print('response', response)
-    json_content = extract_json(response)
+    json_content = extract_json(response, expected_type=dict, context="toc_detector_single_page")
     return json_content['toc_detected']
 
 
@@ -136,7 +137,7 @@ def check_if_toc_extraction_is_complete(content, toc, model=None):
 
     prompt = prompt + '\n Document:\n' + content + '\n Table of contents:\n' + toc
     response = llm_completion(model=model, prompt=prompt)
-    json_content = extract_json(response)
+    json_content = extract_json(response, expected_type=dict, context="check_if_toc_extraction_is_complete")
     return json_content.get('completed', 'no')
 
 
@@ -154,7 +155,7 @@ def check_if_toc_transformation_is_complete(content, toc, model=None):
 
     prompt = prompt + '\n Raw Table of contents:\n' + content + '\n Cleaned Table of contents:\n' + toc
     response = llm_completion(model=model, prompt=prompt)
-    json_content = extract_json(response)
+    json_content = extract_json(response, expected_type=dict, context="check_if_toc_transformation_is_complete")
     return json_content.get('completed', 'no')
 
 def extract_toc_content(content, model=None):
@@ -216,7 +217,7 @@ def detect_page_index(toc_content, model=None):
     Directly return the final JSON structure. Do not output anything else."""
 
     response = llm_completion(model=model, prompt=prompt)
-    json_content = extract_json(response)
+    json_content = extract_json(response, expected_type=dict, context="detect_page_index")
     return json_content['page_index_given_in_toc']
 
 def toc_extractor(page_list, toc_page_list, model):
@@ -265,7 +266,7 @@ def toc_index_extractor(toc, content, model=None):
 
     prompt = toc_extractor_prompt + '\nTable of contents:\n' + str(toc) + '\nDocument pages:\n' + content
     response = llm_completion(model=model, prompt=prompt)
-    json_content = extract_json(response)
+    json_content = extract_json(response, expected_type=list, context="toc_index_extractor")
     return json_content
 
 
@@ -295,7 +296,7 @@ def toc_transformer(toc_content, model=None):
     last_complete, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
     if finish_reason == "finished":
         try:
-            parsed = json.loads(last_complete) if not last_complete.startswith('```') else extract_json(last_complete)
+            parsed = json.loads(last_complete) if not last_complete.startswith('```') else extract_json(last_complete, expected_type=dict, context="toc_transformer")
             if 'table_of_contents' in parsed:
                 cleaned_response = convert_page_to_int(parsed['table_of_contents'])
                 return cleaned_response
@@ -303,7 +304,7 @@ def toc_transformer(toc_content, model=None):
             pass
     if_complete = check_if_toc_transformation_is_complete(toc_content, last_complete, model)
     if if_complete == "yes" and finish_reason == "finished":
-        last_complete = extract_json(last_complete)
+        last_complete = extract_json(last_complete, expected_type=dict, context="toc_transformer")
         cleaned_response=convert_page_to_int(last_complete['table_of_contents'])
         return cleaned_response
 
@@ -348,7 +349,7 @@ def toc_transformer(toc_content, model=None):
             if_complete = check_if_toc_transformation_is_complete(toc_content, last_complete, model)
 
 
-    last_complete = extract_json(last_complete)
+    last_complete = extract_json(last_complete, expected_type=dict, context="toc_transformer")
 
     cleaned_response=convert_page_to_int(last_complete['table_of_contents'])
     return cleaned_response
@@ -501,7 +502,7 @@ def add_page_number_to_toc(part, structure, model=None):
 
     prompt = fill_prompt_seq + f"\n\nCurrent Partial Document:\n{part}\n\nGiven Structure\n{json.dumps(structure, indent=2)}\n"
     current_json_raw = llm_completion(model=model, prompt=prompt)
-    json_result = extract_json(current_json_raw)
+    json_result = extract_json(current_json_raw, expected_type=list, context="add_page_number_to_toc")
 
     for item in json_result:
         if 'start' in item:
@@ -550,11 +551,7 @@ def generate_toc_continue(toc_content, part, model=None):
     Directly return the additional part of the final JSON structure. Do not output anything else."""
 
     prompt = prompt + '\nGiven text\n:' + part + '\nPrevious tree structure\n:' + json.dumps(toc_content, indent=2)
-    response, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
-    if finish_reason == 'finished':
-        return extract_json(response)
-    else:
-        raise Exception(f'finish reason: {finish_reason}')
+    return llm_completion_json(model=model, prompt=prompt, expected_type=list, context="generate_toc_continue")
 
 ### add verify completeness
 def generate_toc_init(part, model=None):
@@ -584,12 +581,7 @@ def generate_toc_init(part, model=None):
     Directly return the final JSON structure. Do not output anything else."""
 
     prompt = prompt + '\nGiven text\n:' + part
-    response, finish_reason = llm_completion(model=model, prompt=prompt, return_finish_reason=True)
-
-    if finish_reason == 'finished':
-         return extract_json(response)
-    else:
-        raise Exception(f'finish reason: {finish_reason}')
+    return llm_completion_json(model=model, prompt=prompt, expected_type=list, context="generate_toc_init")
 
 def process_no_toc(page_list, start_index=1, model=None, logger=None):
     page_contents=[]
@@ -768,7 +760,7 @@ async def single_toc_item_index_fixer(section_title, content, model=None):
 
     prompt = toc_extractor_prompt + '\nSection Title:\n' + str(section_title) + '\nDocument pages:\n' + content
     response = await _sem_acompletion(model=model, prompt=prompt)
-    json_content = extract_json(response)
+    json_content = extract_json(response, expected_type=dict, context="single_toc_item_index_fixer")
     return convert_physical_index_to_int(json_content['physical_index'])
 
 
