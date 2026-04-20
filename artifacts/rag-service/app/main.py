@@ -308,6 +308,7 @@ Rules:
 - Prefer concise, step-by-step technical guidance.
 - When safety-relevant (electrical, hydraulic, pneumatic, lockout/tagout), call it out explicitly.
 - If multiple manuals could apply, briefly state which one you used and why.
+- Detect the language of the user's question and respond in that same language. If the user writes in German, answer in German; if in English, answer in English.
 """
 
 ROUTING_PROMPT = """You are a retrieval planner for a technical support chatbot.
