@@ -6,14 +6,17 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Children, cloneElement, isValidElement, useRef, useState, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useCallback, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 function citationUrl(citation: Citation): string {
   return `${import.meta.env.BASE_URL}api/documents/${citation.documentId}/view?page=${citation.pageNumber}`;
 }
 
-function renderCitationsInText(text: string, citations: Citation[]): ReactNode[] {
+type CitationTitleFn = (documentTitle: string, pageNumber: number) => string;
+
+function renderCitationsInText(text: string, citations: Citation[], citationTitle: CitationTitleFn): ReactNode[] {
   if (!citations || citations.length === 0) return [text];
   const parts = text.split(/(\[\d+\])/g);
   return parts.map((part, i) => {
@@ -31,7 +34,7 @@ function renderCitationsInText(text: string, citations: Citation[]): ReactNode[]
             rel="noopener noreferrer"
             data-citation-num={match[1]}
             className="inline-flex items-center justify-center w-5 h-5 ml-1 text-[10px] font-medium bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors align-text-top leading-none no-underline"
-            title={`${citation.documentTitle}, Page ${citation.pageNumber}`}
+            title={citationTitle(citation.documentTitle, citation.pageNumber)}
           >
             {match[1]}
           </a>
@@ -42,16 +45,16 @@ function renderCitationsInText(text: string, citations: Citation[]): ReactNode[]
   });
 }
 
-function withCitations(children: ReactNode, citations: Citation[]): ReactNode {
+function withCitations(children: ReactNode, citations: Citation[], citationTitle: CitationTitleFn): ReactNode {
   if (!citations || citations.length === 0) return children;
   return Children.map(children, (child, i) => {
     if (typeof child === "string") {
-      return <span key={i}>{renderCitationsInText(child, citations)}</span>;
+      return <span key={i}>{renderCitationsInText(child, citations, citationTitle)}</span>;
     }
     if (isValidElement<{ children?: ReactNode }>(child)) {
       const inner = child.props.children;
       if (inner === undefined || inner === null) return child;
-      return cloneElement(child, { ...child.props, children: withCitations(inner, citations) });
+      return cloneElement(child, { ...child.props, children: withCitations(inner, citations, citationTitle) });
     }
     return child;
   });
@@ -82,27 +85,38 @@ function buildHtmlForCopy(proseEl: HTMLElement): string {
   return clone.innerHTML;
 }
 
-function buildMarkdownForCopy(content: string, citations: Citation[]): string {
+function buildMarkdownForCopy(content: string, citations: Citation[], sourcesLabel: string, pageLabel: (n: number) => string): string {
   let md = content;
   if (citations.length > 0) {
-    md += "\n\nSources:\n";
+    md += `\n\n${sourcesLabel}:\n`;
     citations.forEach((c, i) => {
       const href = citationUrl(c);
       const absHref = `${window.location.origin}${href.startsWith("/") ? "" : "/"}${href}`;
-      md += `[${i + 1}] ${c.documentTitle}, Page ${c.pageNumber} — ${absHref}\n`;
+      md += `[${i + 1}] ${c.documentTitle}, ${pageLabel(c.pageNumber)} — ${absHref}\n`;
     });
   }
   return md;
 }
 
 export function MessageBubble({ message, isStreaming }: { message: Message; isStreaming?: boolean }) {
+  const { t } = useTranslation();
   const isUser = message.role === "user";
   const citations = message.citations ?? [];
   const proseRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
+  const citationTitle = useCallback<CitationTitleFn>(
+    (documentTitle, pageNumber) => t("message.citationTitle", { documentTitle, pageNumber }),
+    [t]
+  );
+
   const handleCopy = async () => {
-    const markdown = buildMarkdownForCopy(message.content, citations);
+    const markdown = buildMarkdownForCopy(
+      message.content,
+      citations,
+      t("message.sources"),
+      (n) => t("message.page", { pageNumber: n })
+    );
     const html = proseRef.current ? buildHtmlForCopy(proseRef.current) : "";
 
     try {
@@ -123,16 +137,16 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
         await navigator.clipboard.writeText(markdown);
       }
       setCopied(true);
-      toast.success("Copied to clipboard");
+      toast.success(t("message.copiedToast"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
       try {
         await navigator.clipboard.writeText(markdown);
         setCopied(true);
-        toast.success("Copied to clipboard");
+        toast.success(t("message.copiedToast"));
         setTimeout(() => setCopied(false), 2000);
       } catch {
-        toast.error("Failed to copy");
+        toast.error(t("message.copyFailed"));
       }
     }
   };
@@ -180,14 +194,14 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeSanitize]}
                 components={{
-                  p: ({ children }) => <p>{withCitations(children, citations)}</p>,
-                  li: ({ children }) => <li>{withCitations(children, citations)}</li>,
-                  td: ({ children }) => <td>{withCitations(children, citations)}</td>,
-                  th: ({ children }) => <th>{withCitations(children, citations)}</th>,
-                  h1: ({ children }) => <h1>{withCitations(children, citations)}</h1>,
-                  h2: ({ children }) => <h2>{withCitations(children, citations)}</h2>,
-                  h3: ({ children }) => <h3>{withCitations(children, citations)}</h3>,
-                  h4: ({ children }) => <h4>{withCitations(children, citations)}</h4>,
+                  p: ({ children }) => <p>{withCitations(children, citations, citationTitle)}</p>,
+                  li: ({ children }) => <li>{withCitations(children, citations, citationTitle)}</li>,
+                  td: ({ children }) => <td>{withCitations(children, citations, citationTitle)}</td>,
+                  th: ({ children }) => <th>{withCitations(children, citations, citationTitle)}</th>,
+                  h1: ({ children }) => <h1>{withCitations(children, citations, citationTitle)}</h1>,
+                  h2: ({ children }) => <h2>{withCitations(children, citations, citationTitle)}</h2>,
+                  h3: ({ children }) => <h3>{withCitations(children, citations, citationTitle)}</h3>,
+                  h4: ({ children }) => <h4>{withCitations(children, citations, citationTitle)}</h4>,
                   a: ({ href, children }) => (
                     <a href={href} target="_blank" rel="noopener noreferrer">
                       {children}
@@ -239,19 +253,19 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
           <button
             type="button"
             onClick={handleCopy}
-            aria-label={copied ? "Copied" : "Copy message"}
-            title={copied ? "Copied" : "Copy message"}
+            aria-label={copied ? t("message.copied") : t("message.copy")}
+            title={copied ? t("message.copied") : t("message.copy")}
             className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 -mt-1 rounded-lg hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
           >
             {copied ? (
               <>
                 <Check className="h-3 w-3" />
-                Copied
+                {t("message.copied")}
               </>
             ) : (
               <>
                 <Copy className="h-3 w-3" />
-                Copy
+                {t("message.copy")}
               </>
             )}
           </button>
@@ -261,7 +275,7 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
           <div className="mt-2 w-full border border-border rounded-xl bg-muted/30 overflow-hidden">
             <div className="px-3 py-2 border-b border-border bg-muted/50 flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <FileText className="h-3 w-3" />
-              Sources
+              {t("message.sources")}
             </div>
             <div className="divide-y divide-border">
               {message.citations.map((citation, idx) => {
@@ -276,7 +290,7 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
                         {citation.documentTitle}
                       </div>
                       <div className="text-muted-foreground mt-0.5">
-                        Page {citation.pageNumber}
+                        {t("message.page", { pageNumber: citation.pageNumber })}
                       </div>
                       {citation.snippet && (
                         <div className="text-muted-foreground mt-1.5 italic border-l-2 border-primary/30 pl-2 line-clamp-2 text-[11px]">
@@ -291,7 +305,7 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
                       className="shrink-0 inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-lg transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      View
+                      {t("message.view")}
                     </a>
                   </div>
                 );
