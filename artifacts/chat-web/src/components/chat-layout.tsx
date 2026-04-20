@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
+import { useTranslation } from "react-i18next";
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -22,6 +23,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const queryClient = useQueryClient();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+
+  const handleLangToggle = () => {
+    const next = i18n.language === "en" ? "de" : "en";
+    i18n.changeLanguage(next);
+  };
 
   const logoutMutation = useLogout({
     mutation: {
@@ -49,9 +56,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           {user?.role === "admin" && (
             <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
               <Settings className="w-4 h-4" />
-              Admin
+              {t("nav.admin")}
             </Link>
           )}
+
+          <button
+            type="button"
+            onClick={handleLangToggle}
+            className="text-xs font-semibold border border-border rounded px-2 py-1 hover:border-primary hover:text-primary transition-colors"
+            aria-label="Toggle language"
+          >
+            {t("nav.langToggle")}
+          </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -67,9 +83,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   <span className="font-medium leading-none text-foreground">{user?.name}</span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                     {user?.role === "admin" ? (
-                      <Badge variant="secondary" className="h-4 text-[10px] px-1 py-0 bg-primary/20 text-primary hover:bg-primary/20">Admin</Badge>
+                      <Badge variant="secondary" className="h-4 text-[10px] px-1 py-0 bg-primary/20 text-primary hover:bg-primary/20">{t("users.roleAdmin")}</Badge>
                     ) : (
-                      <Badge variant="outline" className="h-4 text-[10px] px-1 py-0">User</Badge>
+                      <Badge variant="outline" className="h-4 text-[10px] px-1 py-0">{t("users.roleUser")}</Badge>
                     )}
                   </span>
                 </div>
@@ -84,7 +100,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 }}
               >
                 <Pencil className="w-4 h-4 mr-2" />
-                Edit profile
+                {t("nav.editProfile")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 data-testid="change-password-menu-item"
@@ -94,7 +110,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 }}
               >
                 <KeyRound className="w-4 h-4 mr-2" />
-                Change password
+                {t("nav.changePassword")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -105,7 +121,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 }}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Sign out
+                {t("nav.signOut")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

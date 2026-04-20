@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { 
   useGetConversation,
@@ -50,6 +51,7 @@ async function* readSSE(response: Response): AsyncGenerator<StreamEvent> {
 }
 
 export function ChatArea({ conversationId }: { conversationId?: string }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -70,7 +72,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
       onError: () => {
         setIsStreaming(false);
         setStreamingContent("");
-        toast.error("Failed to create conversation");
+        toast.error(t("chat.createFailed"));
       }
     }
   });
@@ -106,14 +108,14 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
       if ((err as Error).name === "AbortError") return;
       setIsStreaming(false);
       setStreamingContent("");
-      toast.error("Failed to send message");
+      toast.error(t("chat.sendFailed"));
       return;
     }
 
     if (!response.ok) {
       setIsStreaming(false);
       setStreamingContent("");
-      toast.error("Failed to send message");
+      toast.error(t("chat.sendFailed"));
       return;
     }
 
@@ -133,7 +135,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
       if ((err as Error).name === "AbortError") return;
       setIsStreaming(false);
       setStreamingContent("");
-      toast.error("Failed to receive response");
+      toast.error(t("chat.receiveFailed"));
     }
   }, [queryClient]);
 
@@ -197,9 +199,9 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-primary/20">
             <img src="https://stuertz.com/wp-content/uploads/sites/2/2024/05/stuertz-logo.svg" className="h-8 opacity-60 brightness-0 invert" alt="Logo" />
           </div>
-          <h2 className="text-2xl font-semibold text-foreground tracking-tight">Sturtz Technical Support</h2>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight">{t("chat.heading")}</h2>
           <p className="text-muted-foreground max-w-md mt-2 leading-relaxed">
-            Ask questions about machinery, maintenance procedures, or parts manuals. The assistant will provide citations to specific document pages.
+            {t("chat.subheading")}
           </p>
         </div>
       ) : (
@@ -220,7 +222,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
                 </div>
                 <div className="bg-card border border-border rounded-lg px-4 py-3 text-muted-foreground text-sm flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  Assistant is thinking...
+                  {t("chat.thinking")}
                 </div>
               </div>
             )}
@@ -234,7 +236,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask a technical question..."
+            placeholder={t("chat.placeholder")}
             className="min-h-[60px] max-h-[200px] pr-12 resize-none bg-card border-border focus-visible:ring-primary shadow-sm"
             disabled={isPending}
           />
@@ -248,7 +250,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
           </Button>
         </form>
         <div className="text-center mt-2">
-          <span className="text-[10px] text-muted-foreground/60">Information generated may be inaccurate. Verify with official documentation.</span>
+          <span className="text-[10px] text-muted-foreground/60">{t("chat.disclaimer")}</span>
         </div>
       </div>
     </div>

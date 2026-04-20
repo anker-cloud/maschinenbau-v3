@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
-import { 
-  useListConversations, 
+import {
+  useListConversations,
   useDeleteConversation,
   getListConversationsQueryKey
 } from "@workspace/api-client-react";
@@ -10,24 +10,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Trash2, MessageSquare, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNavigate?: () => void }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
+
   const { data: conversations, isLoading } = useListConversations();
-  
+
   const deleteMutation = useDeleteConversation({
     mutation: {
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
-        toast.success("Conversation deleted");
+        toast.success(t("sidebar.deleted"));
         if (activeId === variables.id) {
           setLocation("/");
         }
       },
       onError: () => {
-        toast.error("Failed to delete conversation");
+        toast.error(t("sidebar.deleteFailed"));
       }
     }
   });
@@ -46,7 +48,7 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
           variant="outline"
         >
           <Plus className="h-4 w-4" />
-          New Conversation
+          {t("sidebar.newConversation")}
         </Button>
       </div>
       
@@ -58,7 +60,7 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
             </div>
           ) : conversations?.length === 0 ? (
             <div className="text-center p-4 text-sm text-muted-foreground">
-              No conversations yet
+              {t("sidebar.empty")}
             </div>
           ) : (
             conversations?.map((conv) => (
@@ -77,7 +79,7 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
                 <div className="flex items-center gap-3 overflow-hidden">
                   <MessageSquare className={`h-4 w-4 shrink-0 ${activeId === conv.id ? "text-primary" : "text-muted-foreground"}`} />
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-medium truncate">{conv.title || "New Chat"}</span>
+                    <span className="text-sm font-medium truncate">{conv.title || t("sidebar.defaultTitle")}</span>
                     <span className="text-[10px] text-muted-foreground truncate">
                       {formatDistanceToNow(new Date(conv.createdAt), { addSuffix: true })}
                     </span>
@@ -90,7 +92,7 @@ export function ChatSidebar({ activeId, onNavigate }: { activeId?: string, onNav
                   className={`h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity ${deleteMutation.isPending && deleteMutation.variables?.id === conv.id ? "opacity-100" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm("Delete this conversation?")) {
+                    if (confirm(t("sidebar.deleteConfirm"))) {
                       deleteMutation.mutate({ id: conv.id });
                     }
                   }}
