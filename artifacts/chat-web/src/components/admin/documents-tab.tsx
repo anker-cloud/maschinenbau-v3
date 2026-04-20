@@ -1,17 +1,17 @@
-import { useState, useCallback, useRef } from "react";
-import { 
-  useListDocuments, 
+import { useState, useRef } from "react";
+import {
+  useListDocuments,
   useDeleteDocument,
   useReingestDocument,
   getListDocumentsQueryKey,
   DocumentStatus
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Upload, FileText, AlertCircle, RefreshCw, Loader2, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -37,6 +37,7 @@ interface QueuedFile {
 }
 
 export function DocumentsTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,10 +61,10 @@ export function DocumentsTab() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
-        toast.success("Document deleted");
+        toast.success(t('documents.deleted'));
       },
       onError: () => {
-        toast.error("Failed to delete document");
+        toast.error(t('documents.deleteFailed'));
       }
     }
   });
@@ -72,10 +73,10 @@ export function DocumentsTab() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
-        toast.success("Document re-ingestion started");
+        toast.success(t('documents.reingested'));
       },
       onError: () => {
-        toast.error("Failed to re-ingest document");
+        toast.error(t('documents.reingestFailed'));
       }
     }
   });
@@ -86,11 +87,11 @@ export function DocumentsTab() {
     for (const file of files) {
       const ext = "." + file.name.split(".").pop()?.toLowerCase();
       if (!ALLOWED_EXTS.includes(ext)) {
-        toast.error(`${file.name}: unsupported format`);
+        toast.error(t('documents.unsupportedFormat', { filename: file.name }));
         continue;
       }
       if (file.size > MAX_BYTES) {
-        toast.error(`${file.name}: exceeds 100 MB limit`);
+        toast.error(t('documents.tooLarge', { filename: file.name }));
         continue;
       }
       valid.push({ file, title: stemName(file.name) });
@@ -112,7 +113,6 @@ export function DocumentsTab() {
     setIsUploading(true);
     const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
     let succeeded = 0;
-    let failed = 0;
 
     for (let i = 0; i < queue.length; i++) {
       const { file, title } = queue[i];
@@ -139,13 +139,12 @@ export function DocumentsTab() {
         succeeded++;
       } catch {
         clearInterval(ticker);
-        failed++;
-        toast.error(`Failed to upload "${title}"`);
+        toast.error(t('documents.uploadFailed', { title }));
       }
     }
 
     queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
-    if (succeeded > 0) toast.success(`${succeeded} document${succeeded > 1 ? "s" : ""} uploaded`);
+    if (succeeded > 0) toast.success(t('documents.uploadSuccess', { count: succeeded }));
     setQueue([]);
     setUploadState(null);
     setIsUploading(false);
@@ -156,18 +155,18 @@ export function DocumentsTab() {
     const { status, ingestProgress, ingestTotalPages } = doc;
     if (status === DocumentStatus.ready) {
       return (
-        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20">Ready</Badge>
+        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20">{t('documents.statusReady')}</Badge>
       );
     }
     if (status === DocumentStatus.failed) {
-      return <Badge variant="destructive">Failed</Badge>;
+      return <Badge variant="destructive">{t('documents.statusFailed')}</Badge>;
     }
     if (status === DocumentStatus.pending || status === DocumentStatus.ingesting) {
       if (ingestTotalPages === 0) {
         return (
           <div className="space-y-1.5 min-w-[140px]">
             <Badge variant="secondary" className="bg-primary/20 text-primary hover:bg-primary/20 flex items-center gap-1 w-fit">
-              <Loader2 className="w-3 h-3 animate-spin" /> Initializing…
+              <Loader2 className="w-3 h-3 animate-spin" /> {t('documents.statusInitializing')}
             </Badge>
           </div>
         );
@@ -178,7 +177,7 @@ export function DocumentsTab() {
           <div className="space-y-1.5 min-w-[160px]">
             <div className="flex items-center justify-between text-xs text-primary">
               <span className="flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" /> Extracting pages
+                <Loader2 className="w-3 h-3 animate-spin" /> {t('documents.statusExtracting')}
               </span>
               <span className="font-medium tabular-nums">{ingestProgress} / {ingestTotalPages}</span>
             </div>
@@ -190,7 +189,7 @@ export function DocumentsTab() {
         <div className="space-y-1.5 min-w-[160px]">
           <div className="flex items-center justify-between text-xs text-primary">
             <span className="flex items-center gap-1">
-              <Loader2 className="w-3 h-3 animate-spin" /> Building index
+              <Loader2 className="w-3 h-3 animate-spin" /> {t('documents.statusBuilding')}
             </span>
             <span className="font-medium tabular-nums">{ingestTotalPages} pages</span>
           </div>
@@ -204,7 +203,7 @@ export function DocumentsTab() {
   return (
     <div className="space-y-6">
       <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
-        <h2 className="text-lg font-medium text-foreground mb-4">Upload Documents</h2>
+        <h2 className="text-lg font-medium text-foreground mb-4">{t('documents.heading')}</h2>
 
         <div
           className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer ${
@@ -221,10 +220,10 @@ export function DocumentsTab() {
         >
           <Upload className={`h-10 w-10 mx-auto mb-4 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
           <p className="text-sm font-medium text-foreground mb-1">
-            Click or drag files here to upload
+            {t('documents.dropzone')}
           </p>
           <p className="text-xs text-muted-foreground">
-            Supports PDF, DOCX, TXT, MD, HTML, PPTX &mdash; up to 100 MB each &mdash; multiple files at once
+            {t('documents.formats')}
           </p>
           <input
             type="file"
@@ -251,7 +250,7 @@ export function DocumentsTab() {
                   <Input
                     value={item.title}
                     onChange={(e) => updateTitle(idx, e.target.value)}
-                    placeholder="Document title"
+                    placeholder={t('documents.titlePlaceholder')}
                     disabled={isUploading}
                     className="h-8 text-sm"
                   />
@@ -272,7 +271,7 @@ export function DocumentsTab() {
             {isUploading && uploadState && (
               <div className="space-y-1.5 px-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Uploading {uploadState.current} of {uploadState.total}…</span>
+                  <span>{t('documents.uploading', { current: uploadState.current, total: uploadState.total })}</span>
                   <span>{uploadState.progress}%</span>
                 </div>
                 <Progress value={uploadState.progress} className="h-2" />
@@ -281,7 +280,7 @@ export function DocumentsTab() {
 
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
-                {queue.length} file{queue.length > 1 ? "s" : ""} queued
+                {t('documents.queued', { count: queue.length })}
               </p>
               <Button
                 onClick={handleUploadAll}
@@ -289,9 +288,9 @@ export function DocumentsTab() {
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {isUploading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('documents.uploading', { current: uploadState?.current ?? 0, total: uploadState?.total ?? 0 })}</>
                 ) : (
-                  <><Upload className="mr-2 h-4 w-4" /> Upload {queue.length > 1 ? `All ${queue.length}` : ""} to Knowledge Base</>
+                  <><Upload className="mr-2 h-4 w-4" /> {t('documents.uploadButton', { count: queue.length })}</>
                 )}
               </Button>
             </div>
@@ -301,7 +300,7 @@ export function DocumentsTab() {
 
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="p-4 border-b border-border">
-          <h2 className="text-lg font-medium text-foreground">Knowledge Base</h2>
+          <h2 className="text-lg font-medium text-foreground">{t('documents.knowledgeBase')}</h2>
         </div>
 
         {isLoading ? (
@@ -310,11 +309,11 @@ export function DocumentsTab() {
           <table className="w-full text-sm text-left">
             <thead className="bg-muted text-muted-foreground font-medium border-b border-border">
               <tr>
-                <th className="px-6 py-3">Document Title</th>
-                <th className="px-6 py-3">Size</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Uploaded</th>
-                <th className="px-6 py-3 text-right">Actions</th>
+                <th className="px-6 py-3">{t('documents.colTitle')}</th>
+                <th className="px-6 py-3">{t('documents.colSize')}</th>
+                <th className="px-6 py-3">{t('documents.colStatus')}</th>
+                <th className="px-6 py-3">{t('documents.colUploaded')}</th>
+                <th className="px-6 py-3 text-right">{t('documents.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -368,8 +367,8 @@ export function DocumentsTab() {
                   <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center">
                       <AlertCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                      <p>No documents found</p>
-                      <p className="text-xs mt-1">Upload documents to start building the knowledge base</p>
+                      <p>{t('documents.empty')}</p>
+                      <p className="text-xs mt-1">{t('documents.emptyHint')}</p>
                     </div>
                   </td>
                 </tr>

@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useChangePassword } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,22 +17,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const schema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "New password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your new password"),
-  })
-  .refine((d) => d.newPassword === d.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords do not match",
-  })
-  .refine((d) => d.currentPassword !== d.newPassword, {
-    path: ["newPassword"],
-    message: "New password must differ from current password",
-  });
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
 
 type Props = {
   open: boolean;
@@ -39,6 +29,23 @@ type Props = {
 };
 
 export function ChangePasswordDialog({ open, onOpenChange }: Props) {
+  const { t } = useTranslation();
+
+  const schema = useMemo(() => z
+    .object({
+      currentPassword: z.string().min(1, t('password.required')),
+      newPassword: z.string().min(8, t('password.minLength')),
+      confirmPassword: z.string().min(1, t('password.confirmRequired')),
+    })
+    .refine((d) => d.newPassword === d.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t('password.mismatch'),
+    })
+    .refine((d) => d.currentPassword !== d.newPassword, {
+      path: ["newPassword"],
+      message: t('password.sameAsCurrent'),
+    }), [t]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
@@ -51,12 +58,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
   const mutation = useChangePassword({
     mutation: {
       onSuccess: () => {
-        toast.success("Password changed successfully");
+        toast.success(t('password.success'));
         onOpenChange(false);
       },
       onError: (err: unknown) => {
         const data = (err as { data?: { error?: string } } | undefined)?.data;
-        const message = data?.error ?? "Failed to change password";
+        const message = data?.error ?? t('password.failed');
         if (/current password/i.test(message)) {
           form.setError("currentPassword", { message });
         } else {
@@ -79,15 +86,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Change password</DialogTitle>
+          <DialogTitle>{t('password.title')}</DialogTitle>
           <DialogDescription>
-            Enter your current password and pick a new one. All other signed-in sessions will be
-            logged out.
+            {t('password.description')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current password</Label>
+            <Label htmlFor="currentPassword">{t('password.current')}</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -102,7 +108,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="newPassword">New password</Label>
+            <Label htmlFor="newPassword">{t('password.new')}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -115,7 +121,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm new password</Label>
+            <Label htmlFor="confirmPassword">{t('password.confirm')}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -136,11 +142,11 @@ export function ChangePasswordDialog({ open, onOpenChange }: Props) {
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
             >
-              Cancel
+              {t('password.cancel')}
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Change password
+              {t('password.submit')}
             </Button>
           </div>
         </form>
