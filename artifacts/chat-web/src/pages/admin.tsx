@@ -1,4 +1,5 @@
 import { useLocation, useSearch } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersTab } from "@/components/admin/users-tab";
 import { DocumentsTab } from "@/components/admin/documents-tab";
@@ -12,6 +13,7 @@ function isValidTab(v: string | null): v is TabValue {
 }
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
@@ -30,8 +32,8 @@ export default function AdminDashboard() {
             <Settings className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground tracking-tight">Administration</h1>
-            <p className="text-sm text-muted-foreground">Manage users and knowledge base documents</p>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">{t('admin.title')}</h1>
+            <p className="text-sm text-muted-foreground">{t('admin.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -40,8 +42,8 @@ export default function AdminDashboard() {
         <div className="max-w-5xl mx-auto">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-[400px] grid-cols-2 mb-6">
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="users">{t('admin.usersTab')}</TabsTrigger>
+              <TabsTrigger value="documents">{t('admin.documentsTab')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="users" className="mt-0 outline-none">

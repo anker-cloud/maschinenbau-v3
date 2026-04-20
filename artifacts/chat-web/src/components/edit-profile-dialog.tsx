@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useUpdateProfile, getGetCurrentUserQueryKey, checkEmailAvailability } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
@@ -18,12 +19,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const schema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Enter a valid email address"),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  name: string;
+  email: string;
+};
 
 type EmailStatus = "idle" | "checking" | "available" | "taken";
 
@@ -33,10 +32,16 @@ type Props = {
 };
 
 export function EditProfileDialog({ open, onOpenChange }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const schema = useMemo(() => z.object({
+    name: z.string().min(1, t('profile.nameRequired')),
+    email: z.string().email(t('profile.emailInvalid')),
+  }), [t]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -98,12 +103,12 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
-        toast.success("Profile updated");
+        toast.success(t('profile.updated'));
         onOpenChange(false);
       },
       onError: (err: unknown) => {
         const data = (err as { data?: { error?: string } } | undefined)?.data;
-        const message = data?.error ?? "Failed to update profile";
+        const message = data?.error ?? t('profile.updateFailed');
         if (/email already in use/i.test(message)) {
           form.setError("email", { message });
           setEmailStatus("taken");
@@ -132,12 +137,12 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit profile</DialogTitle>
-          <DialogDescription>Update your display name or email address.</DialogDescription>
+          <DialogTitle>{t('profile.title')}</DialogTitle>
+          <DialogDescription>{t('profile.description')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label htmlFor="profile-name">Name</Label>
+            <Label htmlFor="profile-name">{t('profile.name')}</Label>
             <Input
               id="profile-name"
               type="text"
@@ -150,7 +155,7 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="profile-email">Email</Label>
+            <Label htmlFor="profile-email">{t('profile.email')}</Label>
             <Input
               id="profile-email"
               type="email"
@@ -164,9 +169,9 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
                 {emailStatus === "checking" && <Loader2 className="h-3 w-3 animate-spin" />}
                 {emailStatus === "available" && <CheckCircle className="h-3 w-3" />}
                 {emailStatus === "taken" && <XCircle className="h-3 w-3" />}
-                {emailStatus === "checking" && "Checking availability…"}
-                {emailStatus === "available" && "Email is available"}
-                {emailStatus === "taken" && "Email is already in use"}
+                {emailStatus === "checking" && t('profile.checkingEmail')}
+                {emailStatus === "available" && t('profile.emailAvailable')}
+                {emailStatus === "taken" && t('profile.emailTaken')}
               </p>
             ) : null}
           </div>
@@ -178,14 +183,14 @@ export function EditProfileDialog({ open, onOpenChange }: Props) {
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
             >
-              Cancel
+              {t('profile.cancel')}
             </Button>
             <Button
               type="submit"
               disabled={mutation.isPending || emailStatus === "taken" || emailStatus === "checking"}
             >
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save changes
+              {t('profile.save')}
             </Button>
           </div>
         </form>

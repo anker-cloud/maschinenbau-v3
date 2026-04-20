@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useListUsers, useDeleteUser, useCreateUser, useUpdateUser, getListUsersQueryKey, CreateUserBodyRole } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -15,20 +16,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-const createUserSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum([CreateUserBodyRole.admin, CreateUserBodyRole.user]),
-});
+type CreateUserFormValues = {
+  name: string;
+  email: string;
+  password: string;
+  role: CreateUserBodyRole;
+};
 
-const editUserSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-});
-
-type CreateUserFormValues = z.infer<typeof createUserSchema>;
-type EditUserFormValues = z.infer<typeof editUserSchema>;
+type EditUserFormValues = {
+  name: string;
+  email: string;
+};
 
 interface EditableUser {
   id: string;
@@ -37,10 +35,23 @@ interface EditableUser {
 }
 
 export function UsersTab() {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const { data: users, isLoading } = useListUsers();
-  
+
+  const createUserSchema = useMemo(() => z.object({
+    name: z.string().min(1, t('users.name') + " is required"),
+    email: z.string().email(t('users.email') + " is invalid"),
+    password: z.string().min(6, t('users.password') + " must be at least 6 characters"),
+    role: z.enum([CreateUserBodyRole.admin, CreateUserBodyRole.user]),
+  }), [t]);
+
+  const editUserSchema = useMemo(() => z.object({
+    name: z.string().min(1, t('users.name') + " is required"),
+    email: z.string().email(t('users.email') + " is invalid"),
+  }), [t]);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<EditableUser | null>(null);
 
@@ -48,10 +59,10 @@ export function UsersTab() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
-        toast.success("User deleted successfully");
+        toast.success(t('users.deleted'));
       },
       onError: () => {
-        toast.error("Failed to delete user");
+        toast.error(t('users.deleteFailed'));
       }
     }
   });
@@ -60,12 +71,12 @@ export function UsersTab() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
-        toast.success("User created successfully");
+        toast.success(t('users.created'));
         setIsCreateModalOpen(false);
         createForm.reset();
       },
       onError: () => {
-        toast.error("Failed to create user");
+        toast.error(t('users.createFailed'));
       }
     }
   });
@@ -74,15 +85,15 @@ export function UsersTab() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
-        toast.success("User updated successfully");
+        toast.success(t('users.updated'));
         setEditingUser(null);
       },
       onError: (err: unknown) => {
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 409) {
-          editForm.setError("email", { message: "This email is already in use" });
+          editForm.setError("email", { message: t('users.emailInUse') });
         } else {
-          toast.error("Failed to update user");
+          toast.error(t('users.updateFailed'));
         }
       }
     }
@@ -119,7 +130,7 @@ export function UsersTab() {
 
   const handleDelete = (id: string) => {
     if (id === currentUser?.id) {
-      toast.error("You cannot delete your own account");
+      toast.error(t('users.cannotDeleteSelf'));
       return;
     }
     if (confirm("Are you sure you want to delete this user?")) {
@@ -135,69 +146,69 @@ export function UsersTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center bg-card p-4 rounded-xl border border-border shadow-sm">
         <div>
-          <h2 className="text-lg font-medium text-foreground">User Management</h2>
-          <p className="text-sm text-muted-foreground">Manage access to the technical support portal.</p>
+          <h2 className="text-lg font-medium text-foreground">{t('users.heading')}</h2>
+          <p className="text-sm text-muted-foreground">{t('users.description')}</p>
         </div>
-        
+
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <UserPlus className="h-4 w-4 mr-2" />
-              Add User
+              {t('users.addUser')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
+              <DialogTitle>{t('users.createTitle')}</DialogTitle>
             </DialogHeader>
             <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="create-name">Full Name</Label>
-                <Input id="create-name" {...createForm.register("name")} placeholder="John Doe" />
+                <Label htmlFor="create-name">{t('users.name')}</Label>
+                <Input id="create-name" {...createForm.register("name")} placeholder={t('users.namePlaceholder')} />
                 {createForm.formState.errors.name && (
                   <p className="text-sm text-destructive">{createForm.formState.errors.name.message}</p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="create-email">Email</Label>
-                <Input id="create-email" type="email" {...createForm.register("email")} placeholder="john@stuertz.com" />
+                <Label htmlFor="create-email">{t('users.email')}</Label>
+                <Input id="create-email" type="email" {...createForm.register("email")} placeholder={t('users.emailPlaceholder')} />
                 {createForm.formState.errors.email && (
                   <p className="text-sm text-destructive">{createForm.formState.errors.email.message}</p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="create-password">Password</Label>
+                <Label htmlFor="create-password">{t('users.password')}</Label>
                 <Input id="create-password" type="password" {...createForm.register("password")} />
                 {createForm.formState.errors.password && (
                   <p className="text-sm text-destructive">{createForm.formState.errors.password.message}</p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="create-role">Role</Label>
-                <Select 
+                <Label htmlFor="create-role">{t('users.role')}</Label>
+                <Select
                   onValueChange={(value) => createForm.setValue("role", value as CreateUserBodyRole)}
                   defaultValue={createForm.getValues("role")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder={t('users.rolePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={CreateUserBodyRole.user}>User</SelectItem>
-                    <SelectItem value={CreateUserBodyRole.admin}>Admin</SelectItem>
+                    <SelectItem value={CreateUserBodyRole.user}>{t('users.roleUser')}</SelectItem>
+                    <SelectItem value={CreateUserBodyRole.admin}>{t('users.roleAdmin')}</SelectItem>
                   </SelectContent>
                 </Select>
                 {createForm.formState.errors.role && (
                   <p className="text-sm text-destructive">{createForm.formState.errors.role.message}</p>
                 )}
               </div>
-              
+
               <div className="pt-4 flex justify-end">
                 <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto">
                   {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create User
+                  {t('users.createButton')}
                 </Button>
               </div>
             </form>
@@ -208,20 +219,20 @@ export function UsersTab() {
       <Dialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>{t('users.editTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Full Name</Label>
-              <Input id="edit-name" {...editForm.register("name")} placeholder="John Doe" />
+              <Label htmlFor="edit-name">{t('users.name')}</Label>
+              <Input id="edit-name" {...editForm.register("name")} placeholder={t('users.namePlaceholder')} />
               {editForm.formState.errors.name && (
                 <p className="text-sm text-destructive">{editForm.formState.errors.name.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input id="edit-email" type="email" {...editForm.register("email")} placeholder="john@stuertz.com" />
+              <Label htmlFor="edit-email">{t('users.email')}</Label>
+              <Input id="edit-email" type="email" {...editForm.register("email")} placeholder={t('users.emailPlaceholder')} />
               {editForm.formState.errors.email && (
                 <p className="text-sm text-destructive">{editForm.formState.errors.email.message}</p>
               )}
@@ -229,11 +240,11 @@ export function UsersTab() {
 
             <div className="pt-4 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
-                Cancel
+                {t('users.cancel')}
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
                 {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
+                {t('users.saveChanges')}
               </Button>
             </div>
           </form>
@@ -244,11 +255,11 @@ export function UsersTab() {
         <table className="w-full text-sm text-left">
           <thead className="bg-muted text-muted-foreground font-medium border-b border-border">
             <tr>
-              <th className="px-6 py-3">Name</th>
-              <th className="px-6 py-3">Email</th>
-              <th className="px-6 py-3">Role</th>
-              <th className="px-6 py-3">Created</th>
-              <th className="px-6 py-3 text-right">Actions</th>
+              <th className="px-6 py-3">{t('users.colName')}</th>
+              <th className="px-6 py-3">{t('users.colEmail')}</th>
+              <th className="px-6 py-3">{t('users.colRole')}</th>
+              <th className="px-6 py-3">{t('users.colCreated')}</th>
+              <th className="px-6 py-3 text-right">{t('users.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -258,9 +269,9 @@ export function UsersTab() {
                 <td className="px-6 py-4 text-muted-foreground">{user.email}</td>
                 <td className="px-6 py-4">
                   {user.role === "admin" ? (
-                    <Badge variant="secondary" className="bg-primary/20 text-primary hover:bg-primary/20">Admin</Badge>
+                    <Badge variant="secondary" className="bg-primary/20 text-primary hover:bg-primary/20">{t('users.roleAdmin')}</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-muted-foreground">User</Badge>
+                    <Badge variant="outline" className="text-muted-foreground">{t('users.roleUser')}</Badge>
                   )}
                 </td>
                 <td className="px-6 py-4 text-muted-foreground">
@@ -277,9 +288,9 @@ export function UsersTab() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       title="Delete user"
                       onClick={() => handleDelete(user.id)}
@@ -294,7 +305,7 @@ export function UsersTab() {
             {(!users || users.length === 0) && (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                  No users found
+                  {t('users.empty')}
                 </td>
               </tr>
             )}

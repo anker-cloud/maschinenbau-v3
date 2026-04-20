@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useLogin, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function Login() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
@@ -40,10 +42,10 @@ export default function Login() {
             className="h-12 mb-6 brightness-0 invert"
           />
           <h2 className="text-2xl font-semibold text-foreground tracking-tight">
-            Technical Support Portal
+            {t('login.title')}
           </h2>
           <p className="text-sm text-muted-foreground mt-2">
-            Sign in to access documentation and technical assistance
+            {t('login.subtitle')}
           </p>
         </div>
 
@@ -52,27 +54,27 @@ export default function Login() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Invalid credentials. Please check your email and password.
+                {t('login.error')}
               </AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('login.email')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="technician@stuertz.com"
+                placeholder={t('login.emailPlaceholder')}
                 className="w-full"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('login.password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -92,7 +94,7 @@ export default function Login() {
             {loginMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            Sign in
+            {t('login.submit')}
           </Button>
         </form>
       </div>
