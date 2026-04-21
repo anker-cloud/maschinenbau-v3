@@ -140,7 +140,7 @@ aws cloudformation deploy \
   --template-file cloudformation.yml \
   --stack-name sturtz-prod \
   --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1 \
+  --region eu-central-1 \
   --parameter-overrides \
     KeyName=your-keypair-name \
     GitRepoUrl=https://github.com/your-org/main-app.git \
@@ -170,8 +170,8 @@ aws cloudformation deploy \
 | `SeedAdminPassword` | No | Default: `changeme123` — **change this** |
 | `RdsInstanceClass` | No | Default: `db.t3.medium`. Use `db.t3.micro` to save cost |
 | `InstanceType` | No | Default: `t3.large`. Use `t3.medium` for low traffic |
-| `BedrockChatModelId` | No | Default: `global.anthropic.claude-sonnet-4-5-20250929-v1:0` |
-| `PageindexModel` | No | Default: `bedrock/global.anthropic.claude-sonnet-4-6` |
+| `BedrockChatModelId` | No | Default: `eu.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| `PageindexModel` | No | Default: `bedrock/eu.anthropic.claude-sonnet-4-6` |
 
 ### Step 3 — Monitor the deployment
 
@@ -315,7 +315,7 @@ aws s3 rm s3://your-bucket-name --recursive
 
 ---
 
-## Cost Estimate (us-east-1, approximate)
+## Cost Estimate (eu-central-1, approximate)
 
 | Resource | Type | Monthly cost |
 |---|---|---|

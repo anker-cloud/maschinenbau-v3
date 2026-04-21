@@ -68,12 +68,12 @@ Parameters:
 
   BedrockChatModelId:
     Type: String
-    Default: global.anthropic.claude-sonnet-4-5-20250929-v1:0
+    Default: eu.anthropic.claude-sonnet-4-5-20250929-v1:0
     Description: AWS Bedrock model ID for chat answering
 
   PageindexModel:
     Type: String
-    Default: bedrock/global.anthropic.claude-sonnet-4-6
+    Default: bedrock/eu.anthropic.claude-sonnet-4-6
     Description: LiteLLM model string for the PageIndex tree building
 
 Resources:
