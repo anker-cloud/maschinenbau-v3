@@ -26,9 +26,6 @@ export const messagesTable = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type Conversation = typeof conversationsTable.$inferSelect;
-export type Message = typeof messagesTable.$inferSelect;
-
 export const messageFeedbackTable = pgTable(
   "message_feedback",
   {
@@ -48,4 +45,6 @@ export const messageFeedbackTable = pgTable(
   ]
 );
 
+export type Conversation = typeof conversationsTable.$inferSelect;
+export type Message = typeof messagesTable.$inferSelect;
 export type MessageFeedback = typeof messageFeedbackTable.$inferSelect;
