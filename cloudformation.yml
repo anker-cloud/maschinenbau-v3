@@ -4,7 +4,7 @@ Description: "Sturtz Maschinenbau Support Chatbot — Single EC2 + RDS deploymen
 Parameters:
   InstanceType:
     Type: String
-    Default: t3.large
+    Default: t3.medium
     AllowedValues:
       - t3.medium
       - t3.large
@@ -59,9 +59,10 @@ Parameters:
 
   RdsInstanceClass:
     Type: String
-    Default: db.t3.medium
+    Default: db.t3.small
     AllowedValues:
       - db.t3.micro
+      - db.t3.small
       - db.t3.medium
       - db.t3.large
     Description: RDS instance class
