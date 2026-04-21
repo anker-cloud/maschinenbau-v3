@@ -1,0 +1,581 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Sturtz Maschinenbau Support Chatbot — Single EC2 + RDS deployment"
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues:
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+    Description: EC2 instance type
+
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 Key Pair name for SSH access
+
+  GitRepoUrl:
+    Type: String
+    Description: HTTPS Git URL of the repository (e.g. https://github.com/org/main-app.git)
+
+  GitBranch:
+    Type: String
+    Default: main
+    Description: Git branch to deploy
+
+  PostgresPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Password for the RDS PostgreSQL instance (min 8 characters)
+
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: Secret key for JWT signing (min 32 characters)
+
+  RagInternalSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: Shared secret between api-server and rag-service (min 16 characters)
+
+  SeedAdminEmail:
+    Type: String
+    Default: admin@sturtz.com
+    Description: Email address for the default admin account
+
+  SeedAdminPassword:
+    Type: String
+    NoEcho: true
+    Default: changeme123
+    Description: Password for the default admin account
+
+  RdsInstanceClass:
+    Type: String
+    Default: db.t3.medium
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.medium
+      - db.t3.large
+    Description: RDS instance class
+
+  S3BucketName:
+    Type: String
+    Description: Globally unique S3 bucket name for document uploads
+
+  BedrockChatModelId:
+    Type: String
+    Default: global.anthropic.claude-sonnet-4-5-20250929-v1:0
+    Description: AWS Bedrock model ID for chat answering
+
+  PageindexModel:
+    Type: String
+    Default: bedrock/global.anthropic.claude-sonnet-4-6
+    Description: LiteLLM model string for the PageIndex tree building
+
+Resources:
+
+  # -----------------------------------------------------------------------
+  # VPC and Networking
+  # -----------------------------------------------------------------------
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpc"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-igw"
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-1"
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-2"
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-2"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-rt"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # -----------------------------------------------------------------------
+  # Security Groups
+  # -----------------------------------------------------------------------
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Sturtz EC2 instance
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP from anywhere
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH from anywhere
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ec2-sg"
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Sturtz RDS instance
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+          Description: PostgreSQL from EC2 security group only
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-rds-sg"
+
+  # -----------------------------------------------------------------------
+  # S3 Bucket
+  # -----------------------------------------------------------------------
+
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-documents"
+
+  # -----------------------------------------------------------------------
+  # IAM Role and Instance Profile
+  # -----------------------------------------------------------------------
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3FullAccessOnBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:*
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3BucketName}"
+                  - !Sub "arn:aws:s3:::${S3BucketName}/*"
+        - PolicyName: BedrockInvokePermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: "*"
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${AWS::StackName}-ec2-profile"
+      Roles:
+        - !Ref EC2Role
+
+  # -----------------------------------------------------------------------
+  # RDS Subnet Group and Instance
+  # -----------------------------------------------------------------------
+
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Sturtz RDS instance
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-rds-subnet-group"
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "${AWS::StackName}-postgres"
+      DBInstanceClass: !Ref RdsInstanceClass
+      Engine: postgres
+      EngineVersion: "16"
+      MasterUsername: postgres
+      MasterUserPassword: !Ref PostgresPassword
+      DBName: sturtz
+      AllocatedStorage: "20"
+      StorageType: gp3
+      StorageEncrypted: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-postgres"
+
+  # -----------------------------------------------------------------------
+  # Elastic IP
+  # -----------------------------------------------------------------------
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-eip"
+
+  # -----------------------------------------------------------------------
+  # EC2 Instance
+  # -----------------------------------------------------------------------
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    DependsOn: RDSInstance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 2
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ec2"
+      UserData:
+        Fn::Base64:
+          !Sub
+            - |
+              #!/bin/bash
+              set -uxo pipefail
+              exec > >(tee /var/log/sturtz-userdata.log | logger -t sturtz-userdata -s 2>/dev/console) 2>&1
+
+              # Trap any error so cfn-signal always fires with the correct exit code
+              STURTZ_EXIT=0
+              trap 'STURTZ_EXIT=$$?' ERR
+
+              # ----------------------------------------------------------------
+              # 1. System packages
+              # ----------------------------------------------------------------
+              dnf update -y
+              dnf install -y docker git postgresql15
+
+              # ----------------------------------------------------------------
+              # 2. Start Docker
+              # ----------------------------------------------------------------
+              systemctl enable docker
+              systemctl start docker
+
+              # ----------------------------------------------------------------
+              # 3. Docker Compose plugin
+              # ----------------------------------------------------------------
+              mkdir -p /usr/local/lib/docker/cli-plugins
+              curl -fsSL "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" \
+                -o /usr/local/lib/docker/cli-plugins/docker-compose
+              chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+              # ----------------------------------------------------------------
+              # 4. Node.js 24 + pnpm
+              # ----------------------------------------------------------------
+              curl -fsSL https://rpm.nodesource.com/setup_24.x | bash -
+              dnf install -y nodejs
+              npm install -g pnpm@9
+
+              # ----------------------------------------------------------------
+              # 5. Clone repository
+              # ----------------------------------------------------------------
+              mkdir -p /opt/sturtz
+              git clone ${GitRepoUrl} /opt/sturtz/app
+              cd /opt/sturtz/app
+              git checkout ${GitBranch}
+
+              # ----------------------------------------------------------------
+              # 6. Write .env
+              # Note: Fn::Sub has already replaced all ${...} tokens above;
+              # the heredoc delimiter is unquoted so bash does NOT expand
+              # anything further — the values are already literal strings.
+              # ----------------------------------------------------------------
+              cat > /opt/sturtz/app/.env << ENVEOF
+              DATABASE_URL=postgresql://postgres:${PostgresPassword}@${RDSEndpointAddress}:5432/sturtz
+              JWT_SECRET=${JwtSecret}
+              RAG_INTERNAL_SECRET=${RagInternalSecret}
+              AWS_REGION=${AWS::Region}
+              S3_BUCKET=${S3BucketName}
+              BEDROCK_CHAT_MODEL_ID=${BedrockChatModelId}
+              PAGEINDEX_MODEL=${PageindexModel}
+              SEED_ADMIN_EMAIL=${SeedAdminEmail}
+              SEED_ADMIN_PASSWORD=${SeedAdminPassword}
+              CORS_ORIGINS=http://${ElasticIPAlloc}
+              NODE_ENV=production
+              ENVEOF
+
+              # ----------------------------------------------------------------
+              # 7. Write docker-compose.aws.yml
+              # Same note: Fn::Sub already replaced all ${...} before bash runs.
+              # ----------------------------------------------------------------
+              cat > /opt/sturtz/app/docker-compose.aws.yml << COMPOSEEOF
+              services:
+                pageindex:
+                  build:
+                    context: ./pageindex
+                  environment:
+                    AWS_REGION: ${AWS::Region}
+                    PAGEINDEX_MODEL: ${PageindexModel}
+                    PAGEINDEX_WORKSPACE: /workspace
+                  volumes:
+                    - pageindex_workspace:/workspace
+                  healthcheck:
+                    test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+                    interval: 15s
+                    timeout: 5s
+                    retries: 5
+                    start_period: 15s
+
+                rag-service:
+                  build:
+                    context: .
+                    dockerfile: artifacts/rag-service/Dockerfile
+                  environment:
+                    AWS_REGION: ${AWS::Region}
+                    DATABASE_URL: postgresql://postgres:${PostgresPassword}@${RDSEndpointAddress}:5432/sturtz
+                    PAGEINDEX_SERVICE_URL: http://pageindex:8000
+                    RAG_INTERNAL_SECRET: ${RagInternalSecret}
+                    S3_BUCKET: ${S3BucketName}
+                    BEDROCK_CHAT_MODEL_ID: ${BedrockChatModelId}
+                  depends_on:
+                    pageindex:
+                      condition: service_healthy
+                  ports:
+                    - "8000:8000"
+
+                api-server:
+                  build:
+                    context: .
+                    dockerfile: artifacts/api-server/Dockerfile
+                  environment:
+                    AWS_REGION: ${AWS::Region}
+                    PORT: "8080"
+                    DATABASE_URL: postgresql://postgres:${PostgresPassword}@${RDSEndpointAddress}:5432/sturtz
+                    JWT_SECRET: ${JwtSecret}
+                    RAG_SERVICE_URL: http://rag-service:8000
+                    RAG_INTERNAL_SECRET: ${RagInternalSecret}
+                    NODE_ENV: production
+                    CORS_ORIGINS: http://${ElasticIPAlloc}
+                    S3_BUCKET: ${S3BucketName}
+                    SEED_ADMIN_EMAIL: ${SeedAdminEmail}
+                    SEED_ADMIN_PASSWORD: ${SeedAdminPassword}
+                  depends_on:
+                    rag-service:
+                      condition: service_started
+                  ports:
+                    - "8080:8080"
+
+                chat-web:
+                  build:
+                    context: .
+                    dockerfile: artifacts/chat-web/Dockerfile
+                  ports:
+                    - "80:80"
+                  depends_on:
+                    - api-server
+
+              volumes:
+                pageindex_workspace:
+              COMPOSEEOF
+
+              # Strip the leading spaces that the YAML block scalar introduces
+              # in each line of the heredoc output.
+              sed -i 's/^              //' /opt/sturtz/app/.env
+              sed -i 's/^              //' /opt/sturtz/app/docker-compose.aws.yml
+
+              # ----------------------------------------------------------------
+              # 8. Enable pgvector extension on RDS
+              # ----------------------------------------------------------------
+              PGPASSWORD="${PostgresPassword}" psql \
+                -h "${RDSEndpointAddress}" \
+                -U postgres \
+                -d sturtz \
+                -c "CREATE EXTENSION IF NOT EXISTS vector;" \
+                || true
+
+              # ----------------------------------------------------------------
+              # 9. Install dependencies and run schema push + seed
+              # ----------------------------------------------------------------
+              cd /opt/sturtz/app
+              pnpm install --frozen-lockfile
+
+              DATABASE_URL="postgresql://postgres:${PostgresPassword}@${RDSEndpointAddress}:5432/sturtz" \
+                pnpm --filter @workspace/db run push
+
+              DATABASE_URL="postgresql://postgres:${PostgresPassword}@${RDSEndpointAddress}:5432/sturtz" \
+                pnpm --filter @workspace/api-server run seed-admin
+
+              # ----------------------------------------------------------------
+              # 10. Build Docker images
+              # ----------------------------------------------------------------
+              cd /opt/sturtz/app
+              docker compose -f docker-compose.aws.yml build
+
+              # ----------------------------------------------------------------
+              # 11. Start services
+              # ----------------------------------------------------------------
+              docker compose -f docker-compose.aws.yml up -d
+
+              # ----------------------------------------------------------------
+              # Signal CloudFormation with the actual exit code of the script
+              # ----------------------------------------------------------------
+              /opt/aws/bin/cfn-signal -e $$STURTZ_EXIT \
+                --stack "${AWS::StackName}" \
+                --resource EC2Instance \
+                --region "${AWS::Region}"
+            - RDSEndpointAddress: !GetAtt RDSInstance.Endpoint.Address
+              ElasticIPAlloc: !GetAtt ElasticIP.PublicIp
+
+  # -----------------------------------------------------------------------
+  # Elastic IP Association
+  # -----------------------------------------------------------------------
+
+  ElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref EC2Instance
+      AllocationId: !GetAtt ElasticIP.AllocationId
+
+# -----------------------------------------------------------------------
+# Outputs
+# -----------------------------------------------------------------------
+
+Outputs:
+  AppURL:
+    Description: Public URL of the Sturtz chatbot application
+    Value: !Sub "http://${ElasticIP.PublicIp}"
+
+  SSHCommand:
+    Description: SSH command to connect to the EC2 instance
+    Value: !Sub "ssh -i your-key.pem ec2-user@${ElasticIP.PublicIp}"
+
+  RDSEndpoint:
+    Description: RDS PostgreSQL endpoint address
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  S3Bucket:
+    Description: S3 bucket name for document uploads
+    Value: !Ref DocumentsBucket

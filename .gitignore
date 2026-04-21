@@ -60,6 +60,8 @@ Thumbs.db
 __pycache__/
 *.pyc
 *.pyo
+.coverage
+artifacts/api-server/coverage/
 
 # pageindex service generated dirs
 pageindex/venv/
