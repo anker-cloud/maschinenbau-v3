@@ -636,6 +636,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/SendMessageResponse"
 
+  /conversations/{conversationId}/messages/{messageId}/feedback:
+    post:
+      operationId: submitMessageFeedback
+      tags: [conversations]
+      summary: Submit feedback for a message
+      parameters:
+        - in: path
+          name: conversationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: messageId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMessageFeedbackBody"
+      responses:
+        "201":
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageFeedback"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/feedback:
+    get:
+      operationId: listFeedback
+      tags: [admin]
+      summary: List all message feedback (admin only)
+      responses:
+        "200":
+          description: Feedback list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedbackListItem"
+
 components:
   schemas:
     HealthStatus:
@@ -925,3 +984,82 @@ components:
         assistantMessage:
           $ref: "#/components/schemas/Message"
       required: [userMessage, assistantMessage]
+
+    MessageFeedback:
+      type: object
+      required:
+        - id
+        - messageId
+        - userId
+        - rating
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        rating:
+          type: string
+          enum:
+            - like
+            - dislike
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateMessageFeedbackBody:
+      type: object
+      required:
+        - rating
+      properties:
+        rating:
+          type: string
+          enum:
+            - like
+            - dislike
+        comment:
+          type: string
+
+    FeedbackListItem:
+      type: object
+      required:
+        - id
+        - messageId
+        - userId
+        - userEmail
+        - rating
+        - createdAt
+        - messageSnippet
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        userEmail:
+          type: string
+        rating:
+          type: string
+          enum:
+            - like
+            - dislike
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        messageSnippet:
+          type: string
