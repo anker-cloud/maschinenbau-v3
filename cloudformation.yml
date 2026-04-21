@@ -15,6 +15,11 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 Key Pair name for SSH access
 
+  SSHCidrIp:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: "CIDR range allowed to SSH to the EC2 instance. Restrict to your IP in production (e.g. 1.2.3.4/32)."
+
   GitRepoUrl:
     Type: String
     Description: HTTPS Git URL of the repository (e.g. https://github.com/org/main-app.git)
@@ -54,8 +59,8 @@ Parameters:
   SeedAdminPassword:
     Type: String
     NoEcho: true
-    Default: changeme123
-    Description: Password for the default admin account
+    MinLength: 12
+    Description: Password for the default admin account (min 12 characters)
 
   RdsInstanceClass:
     Type: String
@@ -182,6 +187,26 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-rt"
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
   # -----------------------------------------------------------------------
   # Security Groups
   # -----------------------------------------------------------------------
@@ -200,8 +225,8 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0
-          Description: SSH from anywhere
+          CidrIp: !Ref SSHCidrIp
+          Description: SSH — restrict SSHCidrIp parameter in production
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-ec2-sg"
@@ -246,12 +271,17 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy
       Policies:
-        - PolicyName: S3FullAccessOnBucket
+        - PolicyName: S3AccessOnBucket
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: s3:*
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
                 Resource:
                   - !Sub "arn:aws:s3:::${S3BucketName}"
                   - !Sub "arn:aws:s3:::${S3BucketName}/*"
@@ -264,6 +294,17 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource: "*"
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/sturtz/${AWS::StackName}:*"
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -307,7 +348,7 @@ Resources:
       VPCSecurityGroups:
         - !Ref RDSSecurityGroup
       BackupRetentionPeriod: 7
-      DeletionProtection: false
+      DeletionProtection: true
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-postgres"
@@ -355,23 +396,25 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-ec2"
+        - Key: AppRole
+          Value: !Sub "${AWS::StackName}-app"
       UserData:
         Fn::Base64:
           !Sub
             - |
               #!/bin/bash
-              set -uxo pipefail
+              set -o pipefail
               exec > >(tee /var/log/sturtz-userdata.log | logger -t sturtz-userdata -s 2>/dev/console) 2>&1
 
-              # Trap any error so cfn-signal always fires with the correct exit code
+              # EXIT trap ensures cfn-signal always fires with the correct exit code
               STURTZ_EXIT=0
-              trap 'STURTZ_EXIT=$$?' ERR
+              trap 'STURTZ_EXIT=$$?; /opt/aws/bin/cfn-signal -e $$STURTZ_EXIT --stack "${AWS::StackName}" --resource EC2Instance --region "${AWS::Region}"' EXIT
 
               # ----------------------------------------------------------------
               # 1. System packages
               # ----------------------------------------------------------------
               dnf update -y
-              dnf install -y docker git postgresql15
+              dnf install -y docker git postgresql15 aws-cfn-bootstrap
 
               # ----------------------------------------------------------------
               # 2. Start Docker
@@ -443,6 +486,12 @@ Resources:
                     timeout: 5s
                     retries: 5
                     start_period: 15s
+                  logging:
+                    driver: awslogs
+                    options:
+                      awslogs-group: /sturtz/${AWS::StackName}
+                      awslogs-region: ${AWS::Region}
+                      awslogs-stream-prefix: pageindex
 
                 rag-service:
                   build:
@@ -460,6 +509,18 @@ Resources:
                       condition: service_healthy
                   ports:
                     - "8000:8000"
+                  healthcheck:
+                    test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+                    interval: 15s
+                    timeout: 5s
+                    retries: 5
+                    start_period: 30s
+                  logging:
+                    driver: awslogs
+                    options:
+                      awslogs-group: /sturtz/${AWS::StackName}
+                      awslogs-region: ${AWS::Region}
+                      awslogs-stream-prefix: rag-service
 
                 api-server:
                   build:
@@ -479,9 +540,15 @@ Resources:
                     SEED_ADMIN_PASSWORD: ${SeedAdminPassword}
                   depends_on:
                     rag-service:
-                      condition: service_started
+                      condition: service_healthy
                   ports:
                     - "8080:8080"
+                  logging:
+                    driver: awslogs
+                    options:
+                      awslogs-group: /sturtz/${AWS::StackName}
+                      awslogs-region: ${AWS::Region}
+                      awslogs-stream-prefix: api-server
 
                 chat-web:
                   build:
@@ -489,6 +556,12 @@ Resources:
                     dockerfile: artifacts/chat-web/Dockerfile
                   ports:
                     - "80:80"
+                  logging:
+                    driver: awslogs
+                    options:
+                      awslogs-group: /sturtz/${AWS::StackName}
+                      awslogs-region: ${AWS::Region}
+                      awslogs-stream-prefix: chat-web
                   depends_on:
                     - api-server
 
@@ -498,8 +571,8 @@ Resources:
 
               # Strip the leading spaces that the YAML block scalar introduces
               # in each line of the heredoc output.
-              sed -i 's/^              //' /opt/sturtz/app/.env
-              sed -i 's/^              //' /opt/sturtz/app/docker-compose.aws.yml
+              sed -i 's/^[[:space:]]*//' /opt/sturtz/app/.env
+              sed -i 's/^[[:space:]]*//' /opt/sturtz/app/docker-compose.aws.yml
 
               # ----------------------------------------------------------------
               # 8. Enable pgvector extension on RDS
@@ -545,15 +618,8 @@ Resources:
               systemctl enable codedeploy-agent
               systemctl start codedeploy-agent
 
-              # ----------------------------------------------------------------
-              # Signal CloudFormation with the actual exit code of the script
-              # ----------------------------------------------------------------
-              /opt/aws/bin/cfn-signal -e $$STURTZ_EXIT \
-                --stack "${AWS::StackName}" \
-                --resource EC2Instance \
-                --region "${AWS::Region}"
             - RDSEndpointAddress: !GetAtt RDSInstance.Endpoint.Address
-              ElasticIPAlloc: !GetAtt ElasticIP.PublicIp
+              ElasticIPAlloc: !Ref ElasticIP
 
   # -----------------------------------------------------------------------
   # Elastic IP Association
@@ -615,8 +681,8 @@ Resources:
       ServiceRoleArn: !GetAtt CodeDeployRole.Arn
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
       Ec2TagFilters:
-        - Key: aws:cloudformation:stack-name
-          Value: !Sub "${AWS::StackName}"
+        - Key: AppRole
+          Value: !Sub "${AWS::StackName}-app"
           Type: KEY_AND_VALUE
       AutoRollbackConfiguration:
         Enabled: true
@@ -698,6 +764,16 @@ Resources:
               InputArtifacts:
                 - Name: SourceArtifact
 
+  # -----------------------------------------------------------------------
+  # CloudWatch Log Group
+  # -----------------------------------------------------------------------
+
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/sturtz/${AWS::StackName}"
+      RetentionInDays: 30
+
 # -----------------------------------------------------------------------
 # Outputs
 # -----------------------------------------------------------------------
@@ -705,11 +781,11 @@ Resources:
 Outputs:
   AppURL:
     Description: Public URL of the Sturtz chatbot application
-    Value: !Join ["", ["http://", !GetAtt ElasticIP.PublicIp]]
+    Value: !Join ["", ["http://", !Ref ElasticIP]]
 
   SSHCommand:
     Description: SSH command to connect to the EC2 instance
-    Value: !Join ["", ["ssh -i your-key.pem ec2-user@", !GetAtt ElasticIP.PublicIp]]
+    Value: !Join ["", ["ssh -i your-key.pem ec2-user@", !Ref ElasticIP]]
 
   RDSEndpoint:
     Description: RDS PostgreSQL endpoint address
