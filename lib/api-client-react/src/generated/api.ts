@@ -28,9 +28,11 @@ import type {
   Document,
   EmailAvailabilityResponse,
   ErrorResponse,
-  FeedbackListItem,
+  FeedbackCounts,
+  FeedbackPage,
   GetDocumentViewUrlParams,
   HealthStatus,
+  ListFeedbackParams,
   LoginBody,
   MessageFeedback,
   RefreshBody,
@@ -2296,31 +2298,31 @@ export const useSubmitMessageFeedback = <
 };
 
 /**
- * @summary List all message feedback (admin only)
+ * @summary Get aggregate like/dislike counts (admin only)
  */
-export const getListFeedbackUrl = () => {
-  return `/api/admin/feedback`;
+export const getGetFeedbackCountsUrl = () => {
+  return `/api/admin/feedback/counts`;
 };
 
-export const listFeedback = async (
+export const getFeedbackCounts = async (
   options?: RequestInit,
-): Promise<FeedbackListItem[]> => {
-  return customFetch<FeedbackListItem[]>(getListFeedbackUrl(), {
+): Promise<FeedbackCounts> => {
+  return customFetch<FeedbackCounts>(getGetFeedbackCountsUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListFeedbackQueryKey = () => {
-  return [`/api/admin/feedback`] as const;
+export const getGetFeedbackCountsQueryKey = () => {
+  return [`/api/admin/feedback/counts`] as const;
 };
 
-export const getListFeedbackQueryOptions = <
-  TData = Awaited<ReturnType<typeof listFeedback>>,
-  TError = ErrorType<unknown>,
+export const getGetFeedbackCountsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFeedbackCounts>>,
+  TError = ErrorType<ErrorResponse>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listFeedback>>,
+    Awaited<ReturnType<typeof getFeedbackCounts>>,
     TError,
     TData
   >;
@@ -2328,11 +2330,102 @@ export const getListFeedbackQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListFeedbackQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getGetFeedbackCountsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFeedbackCounts>>
+  > = ({ signal }) => getFeedbackCounts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFeedbackCounts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFeedbackCountsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFeedbackCounts>>
+>;
+export type GetFeedbackCountsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get aggregate like/dislike counts (admin only)
+ */
+
+export function useGetFeedbackCounts<
+  TData = Awaited<ReturnType<typeof getFeedbackCounts>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFeedbackCounts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFeedbackCountsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all message feedback (admin only)
+ */
+export const getListFeedbackUrl = (params?: ListFeedbackParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/feedback?${stringifiedParams}`
+    : `/api/admin/feedback`;
+};
+
+export const listFeedback = async (
+  params?: ListFeedbackParams,
+  options?: RequestInit,
+): Promise<FeedbackPage> => {
+  return customFetch<FeedbackPage>(getListFeedbackUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFeedbackQueryKey = (params?: ListFeedbackParams) => {
+  return [`/api/admin/feedback`, ...(params ? [params] : [])] as const;
+};
+
+export const getListFeedbackQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFeedback>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListFeedbackParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFeedback>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFeedbackQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listFeedback>>> = ({
     signal,
-  }) => listFeedback({ signal, ...requestOptions });
+  }) => listFeedback(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listFeedback>>,
@@ -2353,15 +2446,18 @@ export type ListFeedbackQueryError = ErrorType<unknown>;
 export function useListFeedback<
   TData = Awaited<ReturnType<typeof listFeedback>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listFeedback>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListFeedbackQueryOptions(options);
+>(
+  params?: ListFeedbackParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFeedback>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFeedbackQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

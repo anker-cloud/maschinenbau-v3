@@ -378,16 +378,47 @@ export const SubmitMessageFeedbackBody = zod.object({
 });
 
 /**
+ * @summary Get aggregate like/dislike counts (admin only)
+ */
+export const GetFeedbackCountsResponse = zod.object({
+  likes: zod.number(),
+  dislikes: zod.number(),
+  total: zod.number(),
+});
+
+/**
  * @summary List all message feedback (admin only)
  */
-export const ListFeedbackResponseItem = zod.object({
-  id: zod.string().uuid(),
-  messageId: zod.string().uuid(),
-  userId: zod.string().uuid(),
-  userEmail: zod.string(),
-  rating: zod.enum(["like", "dislike"]),
-  comment: zod.string().nullish(),
-  createdAt: zod.coerce.date(),
-  messageSnippet: zod.string(),
+export const listFeedbackQueryPageDefault = 1;
+
+export const listFeedbackQueryPageSizeDefault = 10;
+export const listFeedbackQueryPageSizeMax = 100;
+
+export const ListFeedbackQueryParams = zod.object({
+  page: zod.coerce.number().min(1).default(listFeedbackQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listFeedbackQueryPageSizeMax)
+    .default(listFeedbackQueryPageSizeDefault),
+  rating: zod.enum(["like", "dislike"]).optional(),
 });
-export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem);
+
+export const ListFeedbackResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      messageId: zod.string().uuid(),
+      userId: zod.string().uuid(),
+      userEmail: zod.string(),
+      rating: zod.enum(["like", "dislike"]),
+      comment: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      messageSnippet: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});

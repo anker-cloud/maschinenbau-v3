@@ -218,6 +218,12 @@ export interface CreateMessageFeedbackBody {
   comment?: string;
 }
 
+export interface FeedbackCounts {
+  likes: number;
+  dislikes: number;
+  total: number;
+}
+
 export type FeedbackListItemRating =
   (typeof FeedbackListItemRating)[keyof typeof FeedbackListItemRating];
 
@@ -237,6 +243,14 @@ export interface FeedbackListItem {
   messageSnippet: string;
 }
 
+export interface FeedbackPage {
+  items: FeedbackListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export type CheckEmailAvailabilityParams = {
   email: string;
 };
@@ -249,3 +263,24 @@ export type UploadDocumentBody = {
 export type GetDocumentViewUrlParams = {
   page?: number;
 };
+
+export type ListFeedbackParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+  rating?: ListFeedbackRating;
+};
+
+export type ListFeedbackRating =
+  (typeof ListFeedbackRating)[keyof typeof ListFeedbackRating];
+
+export const ListFeedbackRating = {
+  like: "like",
+  dislike: "dislike",
+} as const;
