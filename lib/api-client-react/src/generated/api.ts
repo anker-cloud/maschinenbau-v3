@@ -2176,23 +2176,23 @@ export const useSendMessage = <
 };
 
 /**
- * @summary Submit feedback (like/dislike) on an assistant message
+ * @summary Submit feedback for a message
  */
-export const getCreateMessageFeedbackUrl = (
+export const getSubmitMessageFeedbackUrl = (
   conversationId: string,
   messageId: string,
 ) => {
   return `/api/conversations/${conversationId}/messages/${messageId}/feedback`;
 };
 
-export const createMessageFeedback = async (
+export const submitMessageFeedback = async (
   conversationId: string,
   messageId: string,
   createMessageFeedbackBody: CreateMessageFeedbackBody,
   options?: RequestInit,
 ): Promise<MessageFeedback> => {
   return customFetch<MessageFeedback>(
-    getCreateMessageFeedbackUrl(conversationId, messageId),
+    getSubmitMessageFeedbackUrl(conversationId, messageId),
     {
       ...options,
       method: "POST",
@@ -2202,12 +2202,12 @@ export const createMessageFeedback = async (
   );
 };
 
-export const getCreateMessageFeedbackMutationOptions = <
+export const getSubmitMessageFeedbackMutationOptions = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createMessageFeedback>>,
+    Awaited<ReturnType<typeof submitMessageFeedback>>,
     TError,
     {
       conversationId: string;
@@ -2218,7 +2218,7 @@ export const getCreateMessageFeedbackMutationOptions = <
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof createMessageFeedback>>,
+  Awaited<ReturnType<typeof submitMessageFeedback>>,
   TError,
   {
     conversationId: string;
@@ -2227,7 +2227,7 @@ export const getCreateMessageFeedbackMutationOptions = <
   },
   TContext
 > => {
-  const mutationKey = ["createMessageFeedback"];
+  const mutationKey = ["submitMessageFeedback"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -2237,7 +2237,7 @@ export const getCreateMessageFeedbackMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createMessageFeedback>>,
+    Awaited<ReturnType<typeof submitMessageFeedback>>,
     {
       conversationId: string;
       messageId: string;
@@ -2246,7 +2246,7 @@ export const getCreateMessageFeedbackMutationOptions = <
   > = (props) => {
     const { conversationId, messageId, data } = props ?? {};
 
-    return createMessageFeedback(
+    return submitMessageFeedback(
       conversationId,
       messageId,
       data,
@@ -2257,22 +2257,22 @@ export const getCreateMessageFeedbackMutationOptions = <
   return { mutationFn, ...mutationOptions };
 };
 
-export type CreateMessageFeedbackMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createMessageFeedback>>
+export type SubmitMessageFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitMessageFeedback>>
 >;
-export type CreateMessageFeedbackMutationBody =
+export type SubmitMessageFeedbackMutationBody =
   BodyType<CreateMessageFeedbackBody>;
-export type CreateMessageFeedbackMutationError = ErrorType<ErrorResponse>;
+export type SubmitMessageFeedbackMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Submit feedback (like/dislike) on an assistant message
+ * @summary Submit feedback for a message
  */
-export const useCreateMessageFeedback = <
+export const useSubmitMessageFeedback = <
   TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createMessageFeedback>>,
+    Awaited<ReturnType<typeof submitMessageFeedback>>,
     TError,
     {
       conversationId: string;
@@ -2283,7 +2283,7 @@ export const useCreateMessageFeedback = <
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof createMessageFeedback>>,
+  Awaited<ReturnType<typeof submitMessageFeedback>>,
   TError,
   {
     conversationId: string;
@@ -2292,35 +2292,35 @@ export const useCreateMessageFeedback = <
   },
   TContext
 > => {
-  return useMutation(getCreateMessageFeedbackMutationOptions(options));
+  return useMutation(getSubmitMessageFeedbackMutationOptions(options));
 };
 
 /**
- * @summary List all user feedback on assistant messages (admin only)
+ * @summary List all message feedback (admin only)
  */
-export const getGetAdminFeedbackUrl = () => {
+export const getListFeedbackUrl = () => {
   return `/api/admin/feedback`;
 };
 
-export const getAdminFeedback = async (
+export const listFeedback = async (
   options?: RequestInit,
 ): Promise<FeedbackListItem[]> => {
-  return customFetch<FeedbackListItem[]>(getGetAdminFeedbackUrl(), {
+  return customFetch<FeedbackListItem[]>(getListFeedbackUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetAdminFeedbackQueryKey = () => {
+export const getListFeedbackQueryKey = () => {
   return [`/api/admin/feedback`] as const;
 };
 
-export const getGetAdminFeedbackQueryOptions = <
-  TData = Awaited<ReturnType<typeof getAdminFeedback>>,
-  TError = ErrorType<ErrorResponse>,
+export const getListFeedbackQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFeedback>>,
+  TError = ErrorType<unknown>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getAdminFeedback>>,
+    Awaited<ReturnType<typeof listFeedback>>,
     TError,
     TData
   >;
@@ -2328,40 +2328,40 @@ export const getGetAdminFeedbackQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetAdminFeedbackQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListFeedbackQueryKey();
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getAdminFeedback>>
-  > = ({ signal }) => getAdminFeedback({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFeedback>>> = ({
+    signal,
+  }) => listFeedback({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getAdminFeedback>>,
+    Awaited<ReturnType<typeof listFeedback>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type GetAdminFeedbackQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getAdminFeedback>>
+export type ListFeedbackQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFeedback>>
 >;
-export type GetAdminFeedbackQueryError = ErrorType<ErrorResponse>;
+export type ListFeedbackQueryError = ErrorType<unknown>;
 
 /**
- * @summary List all user feedback on assistant messages (admin only)
+ * @summary List all message feedback (admin only)
  */
 
-export function useGetAdminFeedback<
-  TData = Awaited<ReturnType<typeof getAdminFeedback>>,
-  TError = ErrorType<ErrorResponse>,
+export function useListFeedback<
+  TData = Awaited<ReturnType<typeof listFeedback>>,
+  TError = ErrorType<unknown>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getAdminFeedback>>,
+    Awaited<ReturnType<typeof listFeedback>>,
     TError,
     TData
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetAdminFeedbackQueryOptions(options);
+  const queryOptions = getListFeedbackQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

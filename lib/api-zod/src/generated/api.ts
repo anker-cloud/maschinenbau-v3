@@ -365,22 +365,22 @@ export const SendMessageResponse = zod.object({
 });
 
 /**
- * @summary Submit feedback (like/dislike) on an assistant message
+ * @summary Submit feedback for a message
  */
-export const CreateMessageFeedbackParams = zod.object({
+export const SubmitMessageFeedbackParams = zod.object({
   conversationId: zod.coerce.string().uuid(),
   messageId: zod.coerce.string().uuid(),
 });
 
-export const CreateMessageFeedbackBody = zod.object({
+export const SubmitMessageFeedbackBody = zod.object({
   rating: zod.enum(["like", "dislike"]),
   comment: zod.string().optional(),
 });
 
 /**
- * @summary List all user feedback on assistant messages (admin only)
+ * @summary List all message feedback (admin only)
  */
-export const GetAdminFeedbackResponseItem = zod.object({
+export const ListFeedbackResponseItem = zod.object({
   id: zod.string().uuid(),
   messageId: zod.string().uuid(),
   userId: zod.string().uuid(),
@@ -390,4 +390,4 @@ export const GetAdminFeedbackResponseItem = zod.object({
   createdAt: zod.coerce.date(),
   messageSnippet: zod.string(),
 });
-export const GetAdminFeedbackResponse = zod.array(GetAdminFeedbackResponseItem);
+export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem);
