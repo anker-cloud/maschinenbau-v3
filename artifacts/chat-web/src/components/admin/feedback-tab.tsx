@@ -1,4 +1,4 @@
-import { useGetAdminFeedback, FeedbackListItemRating } from "@workspace/api-client-react";
+import { useListFeedback, FeedbackListItemRating } from "@workspace/api-client-react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
@@ -20,7 +20,7 @@ function FeedbackTableHead() {
 
 export function FeedbackTab() {
   const { t } = useTranslation();
-  const { data: feedbackItems, isLoading } = useGetAdminFeedback();
+  const { data: feedbackItems, isLoading } = useListFeedback();
 
   if (isLoading) {
     return (

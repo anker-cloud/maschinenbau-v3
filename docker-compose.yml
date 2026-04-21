@@ -68,7 +68,7 @@ services:
       RAG_SERVICE_URL: http://rag-service:8000
       RAG_INTERNAL_SECRET: ${RAG_INTERNAL_SECRET}
       NODE_ENV: production
-      CORS_ORIGINS: ${CORS_ORIGINS}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
       S3_BUCKET: ${S3_BUCKET}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@sturtz.com}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme123}
@@ -79,6 +79,15 @@ services:
         condition: service_started
     ports:
       - "8080:8080"
+
+  chat-web:
+    build:
+      context: .
+      dockerfile: artifacts/chat-web/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api-server
 
 volumes:
   postgres_data:

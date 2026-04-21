@@ -265,7 +265,7 @@ export function MessageBubble({
               onClick={handleCopy}
               aria-label={copied ? t("message.copied") : t("message.copy")}
               title={copied ? t("message.copied") : t("message.copy")}
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 -mt-1 rounded-lg hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 -mt-1 rounded-lg hover:bg-muted transition-all"
             >
               {copied ? (
                 <>

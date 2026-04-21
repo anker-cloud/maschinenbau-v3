@@ -17,6 +17,8 @@ import { Loader2, Send } from "lucide-react";
 import { MessageBubble } from "./message-bubble";
 import { toast } from "sonner";
 
+const OPTIMISTIC_USER_ID = "optimistic-user";
+
 type StreamEvent =
   | { type: "user_message"; userMessage: Message }
   | { type: "delta"; text: string }
@@ -60,6 +62,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingCitations, setStreamingCitations] = useState<Citation[]>([]);
+  const [optimisticUserMessage, setOptimisticUserMessage] = useState<Message | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const { data: conversation, isLoading } = useGetConversation(
@@ -72,6 +75,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
       onError: () => {
         setIsStreaming(false);
         setStreamingContent("");
+        setOptimisticUserMessage(null);
         toast.error(t("chat.createFailed"));
       }
     }
@@ -108,6 +112,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
       if ((err as Error).name === "AbortError") return;
       setIsStreaming(false);
       setStreamingContent("");
+      setOptimisticUserMessage(null);
       toast.error(t("chat.sendFailed"));
       return;
     }
@@ -115,6 +120,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
     if (!response.ok) {
       setIsStreaming(false);
       setStreamingContent("");
+      setOptimisticUserMessage(null);
       toast.error(t("chat.sendFailed"));
       return;
     }
@@ -124,10 +130,10 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
         if (event.type === "delta") {
           setStreamingContent((prev) => prev + event.text);
         } else if (event.type === "done") {
-          setStreamingCitations(event.assistantMessage.citations ?? []);
           setIsStreaming(false);
           setStreamingContent("");
           setStreamingCitations([]);
+          setOptimisticUserMessage(null);
           queryClient.invalidateQueries({ queryKey: getGetConversationQueryKey(convId) });
         }
       }
@@ -135,6 +141,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
       if ((err as Error).name === "AbortError") return;
       setIsStreaming(false);
       setStreamingContent("");
+      setOptimisticUserMessage(null);
       toast.error(t("chat.receiveFailed"));
     }
   }, [queryClient]);
@@ -148,6 +155,13 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
     setIsStreaming(true);
     setStreamingContent("");
     setStreamingCitations([]);
+    setOptimisticUserMessage({
+      id: OPTIMISTIC_USER_ID,
+      role: "user",
+      content: userMessageContent,
+      citations: [],
+      createdAt: new Date().toISOString(),
+    });
 
     if (!conversationId) {
       let newConvId: string;
@@ -210,6 +224,10 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
             {displayMessages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} conversationId={conversationId} />
             ))}
+
+            {optimisticUserMessage && (
+              <MessageBubble key={OPTIMISTIC_USER_ID} message={optimisticUserMessage} />
+            )}
 
             {streamingMessage && (
               <MessageBubble message={streamingMessage} isStreaming />

@@ -3,7 +3,7 @@ import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
-  useCreateMessageFeedback,
+  useSubmitMessageFeedback,
   type CreateMessageFeedbackBodyRating,
 } from "@workspace/api-client-react";
 
@@ -20,7 +20,7 @@ export function MessageFeedback({ messageId, conversationId }: MessageFeedbackPr
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [comment, setComment] = useState("");
 
-  const mutation = useCreateMessageFeedback();
+  const mutation = useSubmitMessageFeedback();
 
   const submitFeedback = async (selectedRating: CreateMessageFeedbackBodyRating, feedbackComment?: string) => {
     try {
@@ -58,7 +58,7 @@ export function MessageFeedback({ messageId, conversationId }: MessageFeedbackPr
         aria-label={t("message.like")}
         title={t("message.like")}
         disabled={mutation.isPending}
-        className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-1 -mt-1 rounded-lg transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 ${
+        className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-1 -mt-1 rounded-lg transition-all ${
           rating === "like"
             ? "text-green-500 hover:bg-muted"
             : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -73,7 +73,7 @@ export function MessageFeedback({ messageId, conversationId }: MessageFeedbackPr
         aria-label={t("message.dislike")}
         title={t("message.dislike")}
         disabled={mutation.isPending}
-        className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-1 -mt-1 rounded-lg transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 ${
+        className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-1 -mt-1 rounded-lg transition-all ${
           rating === "dislike"
             ? "text-red-500 hover:bg-muted"
             : "text-muted-foreground hover:text-foreground hover:bg-muted"
