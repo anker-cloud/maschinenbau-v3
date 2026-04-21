@@ -208,7 +208,7 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
         <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={scrollRef}>
           <div className="max-w-3xl mx-auto space-y-6 pb-6">
             {displayMessages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble key={msg.id} message={msg} conversationId={conversationId} />
             ))}
 
             {streamingMessage && (

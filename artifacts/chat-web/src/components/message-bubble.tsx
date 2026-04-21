@@ -9,6 +9,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Children, cloneElement, isValidElement, useCallback, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { MessageFeedback } from "./message-feedback";
 
 function citationUrl(citation: Citation): string {
   return `${import.meta.env.BASE_URL}api/documents/${citation.documentId}/view?page=${citation.pageNumber}`;
@@ -98,7 +99,15 @@ function buildMarkdownForCopy(content: string, citations: Citation[], sourcesLab
   return md;
 }
 
-export function MessageBubble({ message, isStreaming }: { message: Message; isStreaming?: boolean }) {
+export function MessageBubble({
+  message,
+  conversationId,
+  isStreaming,
+}: {
+  message: Message;
+  conversationId?: string;
+  isStreaming?: boolean;
+}) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
   const citations = message.citations ?? [];
@@ -250,25 +259,30 @@ export function MessageBubble({ message, isStreaming }: { message: Message; isSt
         </div>
 
         {!isUser && !isStreaming && (
-          <button
-            type="button"
-            onClick={handleCopy}
-            aria-label={copied ? t("message.copied") : t("message.copy")}
-            title={copied ? t("message.copied") : t("message.copy")}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 -mt-1 rounded-lg hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3" />
-                {t("message.copied")}
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3" />
-                {t("message.copy")}
-              </>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label={copied ? t("message.copied") : t("message.copy")}
+              title={copied ? t("message.copied") : t("message.copy")}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 -mt-1 rounded-lg hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover/message:opacity-100 md:focus:opacity-100 md:focus-within:opacity-100"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  {t("message.copied")}
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  {t("message.copy")}
+                </>
+              )}
+            </button>
+            {conversationId && (
+              <MessageFeedback messageId={message.id} conversationId={conversationId} />
             )}
-          </button>
+          </div>
         )}
 
         {!isUser && message.citations && message.citations.length > 0 && (
