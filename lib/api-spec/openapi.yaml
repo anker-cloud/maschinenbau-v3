@@ -636,6 +636,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/SendMessageResponse"
 
+  /conversations/{conversationId}/messages/{messageId}/feedback:
+    post:
+      operationId: createMessageFeedback
+      tags: [conversations]
+      summary: Submit feedback (like/dislike) on an assistant message
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: conversationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: messageId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMessageFeedbackBody"
+      responses:
+        "201":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageFeedback"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Conversation or message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/feedback:
+    get:
+      operationId: getAdminFeedback
+      tags: [admin]
+      summary: List all user feedback on assistant messages (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of feedback items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedbackListItem"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -925,3 +1000,63 @@ components:
         assistantMessage:
           $ref: "#/components/schemas/Message"
       required: [userMessage, assistantMessage]
+
+    MessageFeedback:
+      type: object
+      required: [id, messageId, userId, rating, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        rating:
+          type: string
+          enum: [like, dislike]
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateMessageFeedbackBody:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: string
+          enum: [like, dislike]
+        comment:
+          type: string
+
+    FeedbackListItem:
+      type: object
+      required: [id, messageId, userId, userEmail, rating, createdAt, messageSnippet]
+      properties:
+        id:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        userEmail:
+          type: string
+        rating:
+          type: string
+          enum: [like, dislike]
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        messageSnippet:
+          type: string

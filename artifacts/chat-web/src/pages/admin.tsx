@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersTab } from "@/components/admin/users-tab";
 import { DocumentsTab } from "@/components/admin/documents-tab";
+import { FeedbackTab } from "@/components/admin/feedback-tab";
 import { Settings } from "lucide-react";
 
-const VALID_TABS = ["users", "documents"] as const;
+const VALID_TABS = ["users", "documents", "feedback"] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 function isValidTab(v: string | null): v is TabValue {
@@ -41,9 +42,10 @@ export default function AdminDashboard() {
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-5xl mx-auto">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-[400px] grid-cols-2 mb-6">
+            <TabsList className="grid w-[500px] grid-cols-3 mb-6">
               <TabsTrigger value="users">{t('admin.usersTab')}</TabsTrigger>
               <TabsTrigger value="documents">{t('admin.documentsTab')}</TabsTrigger>
+              <TabsTrigger value="feedback">{t('admin.feedback')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="users" className="mt-0 outline-none">
@@ -52,6 +54,10 @@ export default function AdminDashboard() {
 
             <TabsContent value="documents" className="mt-0 outline-none">
               <DocumentsTab />
+            </TabsContent>
+
+            <TabsContent value="feedback" className="mt-0 outline-none">
+              <FeedbackTab />
             </TabsContent>
           </Tabs>
         </div>

@@ -188,6 +188,55 @@ export interface SendMessageResponse {
   assistantMessage: Message;
 }
 
+export type MessageFeedbackRating =
+  (typeof MessageFeedbackRating)[keyof typeof MessageFeedbackRating];
+
+export const MessageFeedbackRating = {
+  like: "like",
+  dislike: "dislike",
+} as const;
+
+export interface MessageFeedback {
+  id: string;
+  messageId: string;
+  userId: string;
+  rating: MessageFeedbackRating;
+  comment?: string | null;
+  createdAt: string;
+}
+
+export type CreateMessageFeedbackBodyRating =
+  (typeof CreateMessageFeedbackBodyRating)[keyof typeof CreateMessageFeedbackBodyRating];
+
+export const CreateMessageFeedbackBodyRating = {
+  like: "like",
+  dislike: "dislike",
+} as const;
+
+export interface CreateMessageFeedbackBody {
+  rating: CreateMessageFeedbackBodyRating;
+  comment?: string;
+}
+
+export type FeedbackListItemRating =
+  (typeof FeedbackListItemRating)[keyof typeof FeedbackListItemRating];
+
+export const FeedbackListItemRating = {
+  like: "like",
+  dislike: "dislike",
+} as const;
+
+export interface FeedbackListItem {
+  id: string;
+  messageId: string;
+  userId: string;
+  userEmail: string;
+  rating: FeedbackListItemRating;
+  comment?: string | null;
+  createdAt: string;
+  messageSnippet: string;
+}
+
 export type CheckEmailAvailabilityParams = {
   email: string;
 };
