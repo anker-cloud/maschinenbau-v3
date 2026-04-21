@@ -5,12 +5,15 @@ WORKDIR /app
 
 RUN npm install -g pnpm@9
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @workspace/api-server run build
+
+# Deploy stage: creates a self-contained directory with all runtime dependencies
+RUN pnpm --filter @workspace/api-server deploy --prod /deploy
 
 # -------- Runtime stage --------
 FROM node:24-slim
@@ -18,10 +21,7 @@ FROM node:24-slim
 WORKDIR /app
 
 COPY --from=builder /app/artifacts/api-server/dist ./dist
-
-# Several packages are externalized from the bundle (nodemailer, @google-cloud/*, etc.)
-# and must be resolvable at runtime via the standard node_modules lookup chain.
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /deploy/node_modules ./node_modules
 
 EXPOSE 8080
 
