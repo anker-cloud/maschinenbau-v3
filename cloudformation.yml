@@ -224,20 +224,8 @@ Resources:
   # S3 Bucket
   # -----------------------------------------------------------------------
 
-  DocumentsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref S3BucketName
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        - Key: Name
-          Value: !Sub "${AWS::StackName}-documents"
+  # DocumentsBucket is pre-existing — not managed by this stack.
+  # The bucket name is passed via the S3BucketName parameter.
 
   # -----------------------------------------------------------------------
   # IAM Role and Instance Profile
@@ -727,8 +715,8 @@ Outputs:
     Value: !GetAtt RDSInstance.Endpoint.Address
 
   S3Bucket:
-    Description: S3 bucket name for document uploads
-    Value: !Ref DocumentsBucket
+    Description: S3 bucket name for document uploads (pre-existing)
+    Value: !Ref S3BucketName
 
   GitHubConnectionArn:
     Description: Complete the GitHub connection in AWS Console before the pipeline can run
