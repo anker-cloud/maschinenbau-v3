@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import {
   db,
@@ -81,28 +81,67 @@ router.post(
   },
 );
 
+const ListFeedbackQuery = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(10),
+  rating: z.enum(["like", "dislike"]).optional(),
+});
+
+router.get(
+  "/admin/feedback/counts",
+  authenticate,
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const [row] = await db
+      .select({
+        likes: sql<number>`cast(sum(case when ${messageFeedbackTable.rating} = 'like' then 1 else 0 end) as int)`,
+        dislikes: sql<number>`cast(sum(case when ${messageFeedbackTable.rating} = 'dislike' then 1 else 0 end) as int)`,
+        total: count(),
+      })
+      .from(messageFeedbackTable);
+    res.json({ likes: row.likes ?? 0, dislikes: row.dislikes ?? 0, total: row.total ?? 0 });
+  },
+);
+
 router.get(
   "/admin/feedback",
   authenticate,
   requireAdmin,
-  async (_req, res): Promise<void> => {
-    const rows = await db
-      .select({
-        id: messageFeedbackTable.id,
-        messageId: messageFeedbackTable.messageId,
-        userId: messageFeedbackTable.userId,
-        userEmail: usersTable.email,
-        rating: messageFeedbackTable.rating,
-        comment: messageFeedbackTable.comment,
-        createdAt: messageFeedbackTable.createdAt,
-        messageSnippet: sql<string>`substring(${messagesTable.content}, 1, 120)`,
-      })
-      .from(messageFeedbackTable)
-      .innerJoin(messagesTable, eq(messageFeedbackTable.messageId, messagesTable.id))
-      .innerJoin(usersTable, eq(messageFeedbackTable.userId, usersTable.id))
-      .orderBy(desc(messageFeedbackTable.createdAt));
+  async (req, res): Promise<void> => {
+    const parsed = ListFeedbackQuery.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-    res.json(rows);
+    const { page, pageSize, rating } = parsed.data;
+    const offset = (page - 1) * pageSize;
+    const whereCondition = rating ? eq(messageFeedbackTable.rating, rating) : undefined;
+
+    const [countResult, items] = await Promise.all([
+      db.select({ total: count() }).from(messageFeedbackTable).where(whereCondition),
+      db
+        .select({
+          id: messageFeedbackTable.id,
+          messageId: messageFeedbackTable.messageId,
+          userId: messageFeedbackTable.userId,
+          userEmail: usersTable.email,
+          rating: messageFeedbackTable.rating,
+          comment: messageFeedbackTable.comment,
+          createdAt: messageFeedbackTable.createdAt,
+          messageSnippet: sql<string>`substring(${messagesTable.content}, 1, 120)`,
+        })
+        .from(messageFeedbackTable)
+        .innerJoin(messagesTable, eq(messageFeedbackTable.messageId, messagesTable.id))
+        .innerJoin(usersTable, eq(messageFeedbackTable.userId, usersTable.id))
+        .where(whereCondition)
+        .orderBy(desc(messageFeedbackTable.createdAt))
+        .limit(pageSize)
+        .offset(offset),
+    ]);
+
+    const { total } = countResult[0];
+    res.json({ items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
   },
 );
 
