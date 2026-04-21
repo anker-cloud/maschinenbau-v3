@@ -363,3 +363,31 @@ export const SendMessageResponse = zod.object({
     createdAt: zod.coerce.date(),
   }),
 });
+
+/**
+ * @summary Submit feedback for a message
+ */
+export const SubmitMessageFeedbackParams = zod.object({
+  conversationId: zod.coerce.string().uuid(),
+  messageId: zod.coerce.string().uuid(),
+});
+
+export const SubmitMessageFeedbackBody = zod.object({
+  rating: zod.enum(["like", "dislike"]),
+  comment: zod.string().optional(),
+});
+
+/**
+ * @summary List all message feedback (admin only)
+ */
+export const ListFeedbackResponseItem = zod.object({
+  id: zod.string().uuid(),
+  messageId: zod.string().uuid(),
+  userId: zod.string().uuid(),
+  userEmail: zod.string(),
+  rating: zod.enum(["like", "dislike"]),
+  comment: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  messageSnippet: zod.string(),
+});
+export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem);

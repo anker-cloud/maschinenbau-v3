@@ -23,13 +23,16 @@ import type {
   Conversation,
   ConversationDetail,
   CreateConversationBody,
+  CreateMessageFeedbackBody,
   CreateUserBody,
   Document,
   EmailAvailabilityResponse,
   ErrorResponse,
+  FeedbackListItem,
   GetDocumentViewUrlParams,
   HealthStatus,
   LoginBody,
+  MessageFeedback,
   RefreshBody,
   RegisterBody,
   RegisterDocumentBody,
@@ -2171,3 +2174,198 @@ export const useSendMessage = <
 > => {
   return useMutation(getSendMessageMutationOptions(options));
 };
+
+/**
+ * @summary Submit feedback for a message
+ */
+export const getSubmitMessageFeedbackUrl = (
+  conversationId: string,
+  messageId: string,
+) => {
+  return `/api/conversations/${conversationId}/messages/${messageId}/feedback`;
+};
+
+export const submitMessageFeedback = async (
+  conversationId: string,
+  messageId: string,
+  createMessageFeedbackBody: CreateMessageFeedbackBody,
+  options?: RequestInit,
+): Promise<MessageFeedback> => {
+  return customFetch<MessageFeedback>(
+    getSubmitMessageFeedbackUrl(conversationId, messageId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createMessageFeedbackBody),
+    },
+  );
+};
+
+export const getSubmitMessageFeedbackMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitMessageFeedback>>,
+    TError,
+    {
+      conversationId: string;
+      messageId: string;
+      data: BodyType<CreateMessageFeedbackBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitMessageFeedback>>,
+  TError,
+  {
+    conversationId: string;
+    messageId: string;
+    data: BodyType<CreateMessageFeedbackBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["submitMessageFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitMessageFeedback>>,
+    {
+      conversationId: string;
+      messageId: string;
+      data: BodyType<CreateMessageFeedbackBody>;
+    }
+  > = (props) => {
+    const { conversationId, messageId, data } = props ?? {};
+
+    return submitMessageFeedback(
+      conversationId,
+      messageId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitMessageFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitMessageFeedback>>
+>;
+export type SubmitMessageFeedbackMutationBody =
+  BodyType<CreateMessageFeedbackBody>;
+export type SubmitMessageFeedbackMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Submit feedback for a message
+ */
+export const useSubmitMessageFeedback = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitMessageFeedback>>,
+    TError,
+    {
+      conversationId: string;
+      messageId: string;
+      data: BodyType<CreateMessageFeedbackBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitMessageFeedback>>,
+  TError,
+  {
+    conversationId: string;
+    messageId: string;
+    data: BodyType<CreateMessageFeedbackBody>;
+  },
+  TContext
+> => {
+  return useMutation(getSubmitMessageFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary List all message feedback (admin only)
+ */
+export const getListFeedbackUrl = () => {
+  return `/api/admin/feedback`;
+};
+
+export const listFeedback = async (
+  options?: RequestInit,
+): Promise<FeedbackListItem[]> => {
+  return customFetch<FeedbackListItem[]>(getListFeedbackUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFeedbackQueryKey = () => {
+  return [`/api/admin/feedback`] as const;
+};
+
+export const getListFeedbackQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFeedback>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFeedback>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFeedbackQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFeedback>>> = ({
+    signal,
+  }) => listFeedback({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFeedback>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFeedbackQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFeedback>>
+>;
+export type ListFeedbackQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all message feedback (admin only)
+ */
+
+export function useListFeedback<
+  TData = Awaited<ReturnType<typeof listFeedback>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFeedback>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFeedbackQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
