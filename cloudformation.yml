@@ -338,7 +338,7 @@ Resources:
     Properties:
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
-      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      ImageId: "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
       IamInstanceProfile: !Ref EC2InstanceProfile
       SubnetId: !Ref PublicSubnet1
       SecurityGroupIds:
@@ -616,7 +616,7 @@ Resources:
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
       Ec2TagFilters:
         - Key: aws:cloudformation:stack-name
-          Value: !Ref AWS::StackName
+          Value: !Sub "${AWS::StackName}"
           Type: KEY_AND_VALUE
       AutoRollbackConfiguration:
         Enabled: true
