@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const conversationsTable = pgTable("conversations", {
@@ -28,3 +28,24 @@ export const messagesTable = pgTable("messages", {
 
 export type Conversation = typeof conversationsTable.$inferSelect;
 export type Message = typeof messagesTable.$inferSelect;
+
+export const messageFeedbackTable = pgTable(
+  "message_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => messagesTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    rating: text("rating", { enum: ["like", "dislike"] }).notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("message_feedback_message_user_unique").on(table.messageId, table.userId),
+  ]
+);
+
+export type MessageFeedback = typeof messageFeedbackTable.$inferSelect;
