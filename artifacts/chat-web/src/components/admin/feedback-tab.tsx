@@ -189,7 +189,7 @@ export function FeedbackTab() {
   const { likeCount, dislikeCount } = useMemo(() => {
     let likes = 0;
     let dislikes = 0;
-    for (const item of feedbackItems ?? []) {
+    for (const item of feedbackItems?.items ?? []) {
       if (item.rating === FeedbackListItemRating.like) likes++;
       else dislikes++;
     }
@@ -197,9 +197,9 @@ export function FeedbackTab() {
   }, [feedbackItems]);
 
   const filtered = useMemo(() => {
-    if (!feedbackItems) return [];
-    if (ratingFilter === "all") return feedbackItems;
-    return feedbackItems.filter((item) => item.rating === ratingFilter);
+    if (!feedbackItems?.items) return [];
+    if (ratingFilter === "all") return feedbackItems.items;
+    return feedbackItems.items.filter((item) => item.rating === ratingFilter);
   }, [feedbackItems, ratingFilter]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
