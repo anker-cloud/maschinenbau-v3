@@ -18,6 +18,7 @@ function getS3Bucket(): string {
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION ?? "us-east-1",
+  followRegionRedirects: true,
 });
 
 export interface S3ObjectRef {
