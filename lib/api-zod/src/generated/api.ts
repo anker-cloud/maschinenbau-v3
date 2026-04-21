@@ -365,14 +365,14 @@ export const SendMessageResponse = zod.object({
 });
 
 /**
- * @summary Submit thumbs-up or thumbs-down feedback for an assistant message
+ * @summary Submit feedback for a message
  */
-export const CreateMessageFeedbackParams = zod.object({
+export const SubmitMessageFeedbackParams = zod.object({
   conversationId: zod.coerce.string().uuid(),
   messageId: zod.coerce.string().uuid(),
 });
 
-export const CreateMessageFeedbackBody = zod.object({
+export const SubmitMessageFeedbackBody = zod.object({
   rating: zod.enum(["like", "dislike"]),
   comment: zod.string().optional(),
 });

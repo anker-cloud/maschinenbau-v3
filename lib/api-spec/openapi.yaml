@@ -638,9 +638,9 @@ paths:
 
   /conversations/{conversationId}/messages/{messageId}/feedback:
     post:
-      operationId: createMessageFeedback
+      operationId: submitMessageFeedback
       tags: [conversations]
-      summary: Submit thumbs-up or thumbs-down feedback for an assistant message
+      summary: Submit feedback for a message
       parameters:
         - in: path
           name: conversationId
@@ -662,19 +662,19 @@ paths:
               $ref: "#/components/schemas/CreateMessageFeedbackBody"
       responses:
         "201":
-          description: Feedback recorded
+          description: Feedback submitted
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageFeedback"
-        "401":
-          description: Unauthorized
+        "400":
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Message not found
+          description: Not found
           content:
             application/json:
               schema:
@@ -694,18 +694,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/FeedbackListItem"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -999,7 +987,12 @@ components:
 
     MessageFeedback:
       type: object
-      required: [id, messageId, userId, rating, createdAt]
+      required:
+        - id
+        - messageId
+        - userId
+        - rating
+        - createdAt
       properties:
         id:
           type: string
@@ -1012,7 +1005,9 @@ components:
           format: uuid
         rating:
           type: string
-          enum: [like, dislike]
+          enum:
+            - like
+            - dislike
         comment:
           type: string
           nullable: true
@@ -1022,17 +1017,27 @@ components:
 
     CreateMessageFeedbackBody:
       type: object
-      required: [rating]
+      required:
+        - rating
       properties:
         rating:
           type: string
-          enum: [like, dislike]
+          enum:
+            - like
+            - dislike
         comment:
           type: string
 
     FeedbackListItem:
       type: object
-      required: [id, messageId, userId, userEmail, rating, createdAt, messageSnippet]
+      required:
+        - id
+        - messageId
+        - userId
+        - userEmail
+        - rating
+        - createdAt
+        - messageSnippet
       properties:
         id:
           type: string
@@ -1047,7 +1052,9 @@ components:
           type: string
         rating:
           type: string
-          enum: [like, dislike]
+          enum:
+            - like
+            - dislike
         comment:
           type: string
           nullable: true
