@@ -983,7 +983,7 @@ async def meta_processor(page_list, mode=None, toc_content=None, toc_page_list=N
         logger=logger
     )
 
-    accuracy, incorrect_results = await verify_toc(page_list, toc_with_page_number, start_index=start_index, model=opt.model)
+    accuracy, incorrect_results = await verify_toc(page_list, toc_with_page_number, start_index=start_index, N=min(30, len(toc_with_page_number)), model=opt.model)
 
     logger.info({
         'mode': 'process_toc_with_page_numbers',

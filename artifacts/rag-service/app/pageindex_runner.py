@@ -17,7 +17,8 @@ from .config import PAGEINDEX_SERVICE_URL
 log = logging.getLogger("rag.pageindex_runner")
 
 # Tree building can take many minutes for large PDFs.
-_TIMEOUT = httpx.Timeout(connect=10.0, read=900.0, write=60.0, pool=5.0)
+# Large documents (400+ pages) can take well over 15 minutes to index.
+_TIMEOUT = httpx.Timeout(connect=10.0, read=3600.0, write=60.0, pool=5.0)
 
 _OUTER_BACKOFF = [60, 120]
 
