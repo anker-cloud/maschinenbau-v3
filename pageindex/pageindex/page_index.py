@@ -6,7 +6,7 @@ import random
 import re
 from . import utils as _utils
 from .utils import *
-from .utils import llm_completion_json
+from .utils import llm_completion_json, _sem_acompletion
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
