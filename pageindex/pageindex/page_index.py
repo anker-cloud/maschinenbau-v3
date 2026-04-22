@@ -401,7 +401,7 @@ def extract_matching_page_pairs(toc_page, toc_physical_index, start_page_index):
         for page_item in toc_page:
             if phy_item.get('title') == page_item.get('title'):
                 physical_index = phy_item.get('physical_index')
-                if physical_index is not None and int(physical_index) >= start_page_index:
+                if physical_index not in (None, '') and int(physical_index) >= start_page_index:
                     pairs.append({
                         'title': phy_item.get('title'),
                         'page': page_item.get('page'),
