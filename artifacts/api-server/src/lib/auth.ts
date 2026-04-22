@@ -7,6 +7,11 @@ import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+// SECURE_COOKIES defaults to true in production. Set to "false" when serving
+// over plain HTTP (e.g. an EC2 instance without TLS termination) so that
+// httpOnly cookies are still sent by the browser.
+const SECURE_COOKIES =
+  IS_PRODUCTION && process.env.SECURE_COOKIES !== "false";
 
 function resolveJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -187,14 +192,14 @@ export function setAuthCookies(
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: IS_PRODUCTION,
+    secure: SECURE_COOKIES,
     maxAge: 60 * 60 * 1000,
     path: "/",
   });
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: IS_PRODUCTION,
+    secure: SECURE_COOKIES,
     expires: refreshExpiresAt,
     path: "/",
   });

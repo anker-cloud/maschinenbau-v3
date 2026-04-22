@@ -53,6 +53,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Infrastructure
+cloudformation.yml
+
 # Claude Code — never track
 .claude/
 
