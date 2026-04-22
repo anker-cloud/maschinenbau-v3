@@ -127,7 +127,12 @@ export function ChatArea({ conversationId }: { conversationId?: string }) {
 
     try {
       for await (const event of readSSE(response)) {
-        if (event.type === "delta") {
+        if (event.type === "user_message") {
+          // Server confirmed the user message was saved — drop the optimistic
+          // bubble so it doesn't appear alongside the real one in displayMessages.
+          setOptimisticUserMessage(null);
+          queryClient.invalidateQueries({ queryKey: getGetConversationQueryKey(convId) });
+        } else if (event.type === "delta") {
           setStreamingContent((prev) => prev + event.text);
         } else if (event.type === "done") {
           setIsStreaming(false);
