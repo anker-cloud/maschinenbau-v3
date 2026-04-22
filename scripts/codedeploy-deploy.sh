@@ -2,6 +2,9 @@
 set -e
 cd /opt/sturtz/app
 
+echo "Pulling latest code..."
+git pull origin main
+
 echo "Building Docker images..."
 docker compose -f docker-compose.aws.yml build
 
